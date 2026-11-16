@@ -162,7 +162,7 @@ function GR() {
 const bensDoGrupo = G => ({ livre: TAB.filter(([, e]) => e[G] === 'E').map(([n]) => n), cond: TAB.filter(([, e]) => e[G] === 'C').map(([n]) => n) });
 const ENQ_BENS = Object.fromEntries(['I', 'II', 'III'].map(G => { const b = bensDoGrupo(G); return [G, b.livre.join('; ') + '.' + (b.cond.length ? ' Com análise especial da Comissão de Doação: ' + b.cond.join('; ') + '.' : '')]; }));
 const SUPERINTENDENTE = 'Fred Queiroga Pinto';
-const VERSAO = 'v2.12 (nov/2026)';
+const VERSAO = 'v2.13 (nov/2026)';
 const MODELOS = location.protocol === 'file:' ? 'https://codevasf13sr.github.io/doacao/modelos/index.html' : 'modelos/index.html';
 
 // ---------------------------------------------------------------- estado
@@ -800,7 +800,7 @@ function abrirPreenchimento(f) {
   r.onload = () => {
     let j; try { j = JSON.parse(r.result); } catch (e) { j = null; }
     if (!j || j.app !== 'codevasf-doacao-13sr' || !j.dados || !['pub', 'priv'].includes(j.tipo)) { alert('Este arquivo não é um preenchimento salvo por este formulário.'); return; }
-    const d = Object.assign({}, j.dados, { aceite: false });
+    const d = Object.assign({}, j.dados, { aceite: false, qpCompromisso: false });
     try { localStorage.setItem('codevasf_req_rascunho_' + j.tipo, JSON.stringify(d)); } catch (e) {}
     window._avisoVisto = true;
     window._carregado = (d.razao || 'entidade') + (j.salvoEm ? ' (salvo em ' + new Date(j.salvoEm).toLocaleDateString('pt-BR') + ')' : '');
@@ -919,6 +919,7 @@ function declaracoesPub() {
 }
 function pendenciasPub() {
   const p = [];
+  if (blocosQ().includes('pipa') && !S.qpCompromisso) p.push('Assumir o compromisso de potabilidade da água (questionário do caminhão-pipa)');
   if (!S.razao) p.push('Nome do órgão ou entidade'); if (!cnpjOk(S.cnpj)) p.push('CNPJ válido'); if (!S.cidade) p.push('Município');
   if (!S.rNome) p.push('Nome da autoridade'); if (!cpfOk(S.rCpf)) p.push('CPF válido da autoridade');
   if (!bensSel().length) p.push('Marcar pelo menos um bem (etapa Pedido)');
@@ -1190,6 +1191,7 @@ const QDEF = {
       { k: 'qpArmaz', l: 'Onde a água será colocada para as famílias?', t: 'checks', o: ['Cisterna individual', 'Cisterna comunitária', 'Caixa d’água comunitária'] },
       { k: 'qpTratada', l: 'A água é tratada?', t: 'radio', o: SN },
       { k: 'qpTrata', l: 'Quem se responsabiliza pelo tratamento?', t: 'radio', o: ['A prefeitura', 'A família beneficiada', 'Companhia de água'] },
+      { k: 'qpCompromisso', t: 'compromisso', titulo: 'Compromisso do gestor (complementa os compromissos a) a f) do Plano de Uso)', l: 'g) Garantirá que, no caso do caminhão-pipa ser utilizado para o abastecimento humano, a água distribuída atenderá aos padrões de potabilidade e aos requisitos de controle e vigilância da qualidade da água, em conformidade com o Anexo XX da Portaria de Consolidação GM/MS nº 5/2017 e suas alterações posteriores.' },
     ],
   },
   compactador: {
@@ -1319,6 +1321,7 @@ const qVisivel = it => {
 function qCampo(it) {
   const l = qLabel(it);
   if (it.t === 'nota') return `<div class="msg" style="margin:8px 0">${l}</div>`;
+  if (it.t === 'compromisso') return `<div style="border:2px solid var(--azul2);border-radius:8px;padding:12px 14px;margin:14px 0;background:var(--claro)"><b>${it.titulo}</b><p style="margin:6px 0 8px;text-align:justify">${l}</p><label class="opt ${S[it.k] ? 'sel' : ''}"><input type="checkbox" data-bool="${it.k}" ${S[it.k] ? 'checked' : ''}>Declaro que o município assume este compromisso.</label></div>`;
   if (it.t === 'radio') return radios(it.k, l, it.o);
   if (it.t === 'checks') { if (!Array.isArray(S[it.k])) S[it.k] = []; return checks(it.k, l, it.o); }
   if (it.t === 'area') return area(it.k, l);
@@ -1341,8 +1344,9 @@ function anexoQuestionario(c) {
   bl.forEach(b => {
     const d = QDEF[b];
     c.push(barra(d.titulo.toUpperCase()));
-    const linhas = d.itens.filter(it => it.t !== 'nota' && qVisivel(it)).map(it => { const r = S[it.k]; const val = Array.isArray(r) ? (r.length ? r.join(', ') : '') : r; return [{ text: qLabel(it), bold: true, fontSize: 8.8 }, { text: v(val), fontSize: 8.8 }]; });
+    const linhas = d.itens.filter(it => it.t !== 'nota' && it.t !== 'compromisso' && qVisivel(it)).map(it => { const r = S[it.k]; const val = Array.isArray(r) ? (r.length ? r.join(', ') : '') : r; return [{ text: qLabel(it), bold: true, fontSize: 8.8 }, { text: v(val), fontSize: 8.8 }]; });
     c.push(grade(linhas, [230, '*']));
+    d.itens.filter(it => it.t === 'compromisso' && qVisivel(it)).forEach(it => { c.push(barra(it.titulo.toUpperCase())); c.push({ text: qLabel(it), alignment: 'justify', fontSize: 10, margin: [12, 4, 0, 2] }); c.push({ text: (S[it.k] ? '[X]' : '[  ]') + ' Declaro que o município assume este compromisso.', bold: true, fontSize: 9, margin: [12, 2, 0, 4] }); });
   });
   c.push(barra('RESPONSÁVEL PELAS INFORMAÇÕES TÉCNICAS'));
   c.push(grade([[{ text: 'Nome / cargo / telefone', bold: true }, `${v(S.qResp)} / ${v(S.qRespCargo)} / ${v(S.qRespTel)}`], [{ text: 'Outras informações', bold: true }, v(S.qOutras)]], [230, '*']));
