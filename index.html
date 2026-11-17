@@ -14,6 +14,8 @@
   header { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
   header a.mod { color:#fff; border:1px solid rgba(255,255,255,.5); border-radius:6px; padding:6px 10px; font-size:13px; text-decoration:none; white-space:nowrap; }
   header a.mod:hover { background:rgba(255,255,255,.12); }
+  .rodape { max-width:900px; margin:6px auto 40px; padding:12px 16px; font-size:12.5px; color:#4a5568; border-top:1px solid #d5dbe5; line-height:1.5; }
+  .rodape b { color:#1F3864; }
   .proto { background:#fff4d6; color:#6b4a00; font-size:12.5px; padding:6px 20px; border-bottom:1px solid #f0dca6; }
   .wrap { max-width:860px; margin:0 auto; padding:18px 16px 60px; }
   .steps { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:14px; }
@@ -91,6 +93,7 @@
     <button class="btn" id="next">Avançar →</button>
   </div>
 </div>
+<footer class="rodape">🔒 <b>Ferramenta segura de apoio ao preenchimento.</b> Esta página apenas ajuda a montar os documentos do pedido de doação. Ela funciona inteiramente no seu navegador: não há cadastro nem senha, e nenhuma informação digitada é enviada ou armazenada em servidor. O rascunho fica salvo somente neste computador e pode ser apagado a qualquer momento em “Novo requerimento”. O pedido só é formalizado quando a entidade assina os documentos gerados e os protocola no <a href="https://www.gov.br/codevasf/pt-br/servicos/protocolo-digital" target="_blank" rel="noopener">Protocolo Digital da Codevasf</a>.</footer>
 
 <script>
 // ---------------------------------------------------------------- dados fixos
@@ -162,8 +165,8 @@ function GR() {
 const bensDoGrupo = G => ({ livre: TAB.filter(([, e]) => e[G] === 'E').map(([n]) => n), cond: TAB.filter(([, e]) => e[G] === 'C').map(([n]) => n) });
 const ENQ_BENS = Object.fromEntries(['I', 'II', 'III'].map(G => { const b = bensDoGrupo(G); return [G, b.livre.join('; ') + '.' + (b.cond.length ? ' Com análise especial da Comissão de Doação: ' + b.cond.join('; ') + '.' : '')]; }));
 const SUPERINTENDENTE = 'Fred Queiroga Pinto';
-const VERSAO = 'v2.13 (nov/2026)';
-const MODELOS = location.protocol === 'file:' ? 'https://codevasf13sr.github.io/doacao/modelos/index.html' : 'modelos/index.html';
+const VERSAO = 'v2.14 (nov/2026)';
+const MODELOS = location.protocol === 'file:' ? 'https://requerimento-doacao.github.io/doacao/modelos/index.html' : 'modelos/index.html';
 
 // ---------------------------------------------------------------- estado
 const VAZIO = () => ({

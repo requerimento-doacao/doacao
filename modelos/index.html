@@ -43,6 +43,8 @@
   .msg { font-size:13.5px; padding:10px 12px; border-radius:8px; margin-top:10px; background:var(--claro); color:var(--azul); }
   .msg a { color:var(--azul2); }
   footer { text-align:center; font-size:13px; color:var(--cinza); margin-top:22px; }
+  .seg { text-align:left; font-size:12.5px; line-height:1.5; border-top:1px solid var(--borda); padding-top:12px; margin-top:12px; }
+  .seg b { color:var(--azul); }
 </style>
 </head>
 <body>
@@ -58,10 +60,11 @@
     <a class="tab" href="#apos" data-t="apos"><b>Após a aprovação</b><div>Autorização de retirada do bem doado</div></a>
   </div>
   <div class="card" id="card"></div>
-  <footer>Dúvidas: Gabinete da 13ª Superintendência Regional da Codevasf – João Pessoa/PB · Telefone (61) 99298-0403</footer>
+  <footer>Dúvidas: Gabinete da 13ª Superintendência Regional da Codevasf – João Pessoa/PB · Telefone (61) 99298-0403
+    <div class="seg">🔒 <b>Página segura de apoio ao preenchimento.</b> Os modelos são arquivos Word para baixar, preencher e assinar no seu computador; nenhuma informação é enviada ou armazenada por esta página. O pedido só é formalizado quando a entidade protocola os documentos assinados no <a href="https://www.gov.br/codevasf/pt-br/servicos/protocolo-digital" target="_blank" rel="noopener">Protocolo Digital da Codevasf</a>.</div></footer>
 </div>
 <script>
-const VERSAO = 'v2.13 (nov/2026)';
+const VERSAO = 'v2.14 (nov/2026)';
 const PROTOCOLO = 'https://www.gov.br/codevasf/pt-br/servicos/protocolo-digital';
 const item = (arq, titulo, desc, cond, destaque) => `<div class="item${destaque ? ' destaque' : ''}"><div class="tx"><div class="tt">${titulo}${cond ? ` <span class="cond">(${cond})</span>` : ''}</div>${desc ? `<div class="ds">${desc}</div>` : ''}</div><a class="dl" href="${arq}" download>⬇ Baixar</a></div>`;
 const QUEST = [
