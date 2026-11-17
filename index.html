@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Requerimento de Doação – Codevasf 13ª SR</title>
+<title>Requerimento de Doação à Codevasf</title>
 <style>
   :root { --azul:#1F3864; --azul2:#2E5597; --claro:#EEF3FA; --borda:#d5dbe5; --txt:#1d2433; --cinza:#5b6475; --ok:#1e7b45; --alerta:#a85d00; --erro:#b42318; }
   * { box-sizing:border-box; }
@@ -78,7 +78,7 @@
 </head>
 <body>
 <header>
-  <div><h1>Requerimento de Doação – Codevasf 13ª SR</h1>
+  <div><h1>Requerimento de Doação à Codevasf</h1>
   <p>Assistente de preenchimento (Norma N-455)</p></div>
   <a class="mod" id="linkModelos" href="modelos/">📄 Modelos em Word</a>
 </header>
@@ -165,7 +165,7 @@ function GR() {
 const bensDoGrupo = G => ({ livre: TAB.filter(([, e]) => e[G] === 'E').map(([n]) => n), cond: TAB.filter(([, e]) => e[G] === 'C').map(([n]) => n) });
 const ENQ_BENS = Object.fromEntries(['I', 'II', 'III'].map(G => { const b = bensDoGrupo(G); return [G, b.livre.join('; ') + '.' + (b.cond.length ? ' Com análise especial da Comissão de Doação: ' + b.cond.join('; ') + '.' : '')]; }));
 const SUPERINTENDENTE = 'Fred Queiroga Pinto';
-const VERSAO = 'v2.14 (nov/2026)';
+const VERSAO = 'v2.15 (nov/2026)';
 const MODELOS = location.protocol === 'file:' ? 'https://requerimento-doacao.github.io/doacao/modelos/index.html' : 'modelos/index.html';
 
 // ---------------------------------------------------------------- estado
