@@ -165,7 +165,7 @@ function GR() {
 const bensDoGrupo = G => ({ livre: TAB.filter(([, e]) => e[G] === 'E').map(([n]) => n), cond: TAB.filter(([, e]) => e[G] === 'C').map(([n]) => n) });
 const ENQ_BENS = Object.fromEntries(['I', 'II', 'III'].map(G => { const b = bensDoGrupo(G); return [G, b.livre.join('; ') + '.' + (b.cond.length ? ' Com análise especial da Comissão de Doação: ' + b.cond.join('; ') + '.' : '')]; }));
 const SUPERINTENDENTE = 'Fred Queiroga Pinto';
-const VERSAO = 'v2.15 (nov/2026)';
+const VERSAO = 'v2.17 (nov/2026)';
 const MODELOS = location.protocol === 'file:' ? 'https://requerimento-doacao.github.io/doacao/modelos/index.html' : 'modelos/index.html';
 
 // ---------------------------------------------------------------- estado
@@ -234,6 +234,21 @@ function assocMsg() {
   return `<div class="msg ${ok ? 'ok' : 'warn'}">${r.n} associado(s) informado(s)${r.min ? ` · mínimo do ${GRUPOS[GR()].rotulo}: ${r.min}` : ''}${r.inval ? ` · <b>${r.inval} CPF(s) inválido(s)</b>` : ''}${r.dup ? ` · <b>${r.dup} CPF(s) repetido(s)</b>` : ''}</div>`;
 }
 const bensSel = () => Object.entries(S.bens).filter(([n, v]) => v && v.on && (TIPO === 'pub' || n === '__outro' || melhor(n))).map(([n, v]) => ({ nome: n === '__outro' ? (S.outroBem || 'Outro bem') : n, qtd: v.qtd || '1', fin: v.fin || '' }));
+// implementos agrícolas detalhados (para "Trator agrícola com implementos" e "Implementos agrícolas")
+const IMPLEMENTOS = ['Grade aradora', 'Carreta agrícola', 'Grade niveladora', 'Plantadeira', 'Roçadeira', 'Sulcador', 'Batedeira de cereais'];
+const BEM_TRI = 'Trator agrícola com implementos', BEM_IMP = 'Implementos agrícolas (para trator que já possui)';
+const implSel = () => [...IMPLEMENTOS.filter(n => (S.impl || {})[n]?.on).map(n => ({ nome: n, qtd: S.impl[n].qtd || '1' })), ...((S.impl || {}).__outro?.on ? [{ nome: S.implOutro || 'Outro implemento', qtd: S.impl.__outro.qtd || '1' }] : [])];
+// lista de bens para os documentos: trator e implementos aparecem item a item
+const bensDoc = () => bensSel().flatMap(b => {
+  if (b.nome !== BEM_TRI && b.nome !== BEM_IMP) return [b];
+  const im = implSel().map(x => ({ nome: x.nome + ' (implemento agrícola)', qtd: x.qtd, fin: b.fin }));
+  return b.nome === BEM_TRI ? [{ nome: 'Trator agrícola', qtd: b.qtd, fin: b.fin }, ...im] : (im.length ? im : [b]);
+});
+const temImpl = () => bensSel().some(b => b.nome === BEM_TRI || b.nome === BEM_IMP);
+const quadroImpl = n => `<div style="margin-top:8px;padding:10px 12px;background:#fff;border:1px dashed var(--borda);border-radius:8px">
+  <label class="f" style="margin-bottom:6px">Quais implementos? Marque e informe a quantidade de cada um</label>
+  ${[...IMPLEMENTOS, '__outro'].map(m => { const x = (S.impl || {})[m] || {}; return `<div style="display:flex;align-items:center;gap:10px;margin:4px 0;flex-wrap:wrap"><label class="opt ${x.on ? 'sel' : ''}" style="flex:1;min-width:220px;margin:0"><input type="checkbox" data-impl="${m}" ${x.on ? 'checked' : ''}>${m === '__outro' ? 'Outro implemento' : m}</label>${m === '__outro' && x.on ? `<input type="text" data-k="implOutro" value="${esc(S.implOutro || '')}" placeholder="Qual?" style="max-width:220px">` : ''}${x.on ? `<span style="display:flex;align-items:center;gap:6px">Qtd. <input type="number" min="1" data-implq="${m}" value="${esc(x.qtd || '1')}" style="width:80px"></span>` : ''}</div>`; }).join('')}
+</div>`;
 const temBem = t => bensSel().some(b => b.nome.toLowerCase().includes(t));
 
 // ---------------------------------------------------------------- componentes de formulário
@@ -259,7 +274,7 @@ const ETAPAS_PRIV = [
     ${!PERFIL() ? '<div class="msg warn">Preencha a data de abertura do CNPJ e o número de associados na etapa Perfil para ver os bens que a entidade pode pedir.</div>' : ''}
     ${PERFIL() ? TAB.filter(([n]) => melhor(n)).map(([n]) => [n, melhor(n)]).concat([['__outro', { g: PERFIL(), cond: false }]]).map(([n, m], i, arr) => { const v = S.bens[n] || {}; return `${cabCat(n, i, arr.map(x => x[0]))}
       <div class="bem"><div class="bh"><label class="opt ${v.on ? 'sel' : ''}" style="flex:1"><input type="checkbox" data-bem="${esc(n)}" ${v.on ? 'checked' : ''}>${n === '__outro' ? 'Outro bem' : esc(n)} ${m.cond ? '<small>(análise especial da Comissão)</small>' : ''}</label></div>
-      ${v.on ? `<div class="row" style="margin-top:6px">${n === '__outro' ? `<div><label class="f">Qual bem?</label><input type="text" data-k="outroBem" value="${esc(S.outroBem)}"></div>` : ''}<div style="max-width:140px"><label class="f">Quantidade</label><input type="number" min="1" data-bq="${esc(n)}" value="${esc(v.qtd || '1')}"></div><div style="grid-column:span 2"><label class="f">Para que será usado?</label><input type="text" data-bf="${esc(n)}" value="${esc(v.fin || '')}" placeholder="Ex.: preparo do solo para plantio de milho e feijão"></div></div>` : ''}</div>`; }).join('') : ''}
+      ${v.on ? `<div class="row" style="margin-top:6px">${n === '__outro' ? `<div><label class="f">Qual bem?</label><input type="text" data-k="outroBem" value="${esc(S.outroBem)}"></div>` : ''}${n === BEM_IMP ? '' : `<div style="max-width:170px"><label class="f">${n === BEM_TRI ? 'Quantidade de tratores' : 'Quantidade'}</label><input type="number" min="1" data-bq="${esc(n)}" value="${esc(v.qtd || '1')}"></div>`}<div style="grid-column:span 2"><label class="f">Para que será usado?</label><input type="text" data-bf="${esc(n)}" value="${esc(v.fin || '')}" placeholder="Ex.: preparo do solo para plantio de milho e feijão"></div></div>` : ''}${v.on && (n === BEM_TRI || n === BEM_IMP) ? quadroImpl(n) : ''}</div>`; }).join('') : ''}
     ${bensSel().length ? `<div class="msg ok" style="margin-top:12px"><b>Para este pedido, a entidade será analisada como ${GRUPOS[GR()].rotulo}</b>${GR() !== PERFIL() ? ` (o perfil permite até o ${GRUPOS[PERFIL()].rotulo}, mas os bens escolhidos só exigem o ${GRUPOS[GR()].rotulo})` : ''}. As próximas etapas e os documentos seguem as exigências desse grupo.</div>` : ''}
     <h3>Quem será beneficiado</h3>
     <div class="row"><div>${txt('familias', 'Nº de famílias beneficiadas', { type: 'number' })}</div><div>${txt('pessoas', 'Nº de pessoas beneficiadas', { type: 'number' })}</div></div>
@@ -387,6 +402,7 @@ function pendencias() {
   if (g && S.abertura && anosDesde(S.abertura) < g.anos) p.push(`Tempo de CNPJ insuficiente para o ${g.rotulo}`);
   if (!S.rNome) p.push('Nome do representante legal'); if (!cpfOk(S.rCpf)) p.push('CPF válido do representante');
   if (!bensSel().length) p.push('Marcar pelo menos um bem (etapa Pedido)');
+  if (temImpl() && !implSel().length) p.push('Marcar quais implementos agrícolas estão sendo pedidos (etapa Pedido)');
   if (!S.justificativa) p.push('Justificativa (etapa Pedido)');
   if (GR() !== 'I' && g && !(S.banco && S.agencia && S.conta)) p.push('Dados bancários (obrigatórios no grupo)');
   if (!S.assocModo) p.push('Informar como a relação de associados será apresentada');
@@ -401,7 +417,7 @@ function pendencias() {
   return p;
 }
 function revisao() {
-  const p = pendencias(), b = bensSel();
+  const p = pendencias(), b = bensDoc();
   return `<h2>Revisão e geração dos documentos</h2><p class="sub">Confira o resumo, leia as declarações e gere os PDFs para assinatura.</p>
   <dl class="sum">
     <dt>Entidade</dt><dd>${esc(S.razao) || '—'} · CNPJ ${esc(S.cnpj) || '—'} · ${GRUPOS[GR()]?.rotulo || 'grupo não escolhido'}</dd>
@@ -523,6 +539,7 @@ card.addEventListener('input', e => {
   if (t.dataset.dir !== undefined) { S.diretoria[+t.dataset.dir][t.dataset.f] = t.value; salvar(); return; }
   if (t.dataset.rec !== undefined) { S.recebidos[+t.dataset.rec][t.dataset.f] = t.value; salvar(); return; }
   if (t.dataset.bq) { S.bens[t.dataset.bq].qtd = t.value; salvar(); return; }
+  if (t.dataset.implq) { S.impl = S.impl || {}; S.impl[t.dataset.implq] = Object.assign(S.impl[t.dataset.implq] || {}, { qtd: t.value }); salvar(); return; }
   if (t.dataset.bf) { S.bens[t.dataset.bf].fin = t.value; salvar(); return; }
   if (t.dataset.ph !== undefined) { FOTOS[+t.dataset.ph][t.dataset.f] = t.value; return; }
 });
@@ -532,6 +549,7 @@ card.addEventListener('change', e => {
   if (t.type === 'radio' && t.dataset.k) { S[t.dataset.k] = t.value; salvar(); render(); return; }
   if (t.dataset.arr) { const a = S[t.dataset.arr] || (S[t.dataset.arr] = []); const i = a.indexOf(t.value); if (t.checked && i < 0) a.push(t.value); if (!t.checked && i >= 0) a.splice(i, 1); salvar(); if (typeof QDEP !== 'undefined' && QDEP.has(t.dataset.arr)) { render(); return; } t.closest('.opt').classList.toggle('sel', t.checked); return; }
   if (t.dataset.bool) { S[t.dataset.bool] = t.checked; salvar(); render(); return; }
+  if (t.dataset.impl) { S.impl = S.impl || {}; S.impl[t.dataset.impl] = Object.assign(S.impl[t.dataset.impl] || { qtd: '1' }, { on: t.checked }); salvar(); render(); return; }
   if (t.dataset.bem) { const n = t.dataset.bem; S.bens[n] = Object.assign(S.bens[n] || { qtd: '1', fin: '' }, { on: t.checked }); salvar(); render(); return; }
   if (t.id === 'fileIn') { addFotos(t.files); return; }
   if (t.id === 'fileAs') { lerAnexoAssoc(t.files[0]); return; }
@@ -654,7 +672,7 @@ const blocoAssin = () => [
 ];
 
 function docRequerimento() {
-  const g = GRUPOS[GR()] || GRUPOS.I, b = bensSel();
+  const g = GRUPOS[GR()] || GRUPOS.I, b = bensDoc();
   const c = [];
   c.push({ text: 'REQUERIMENTO DE DOAÇÃO DE BEM DE ATIVIDADE PROGRAMÁTICA – CODEVASF', bold: true, alignment: 'center', fontSize: 11.5 });
   c.push({ text: `Pessoa jurídica de direito privado sem fins lucrativos – ${g.rotulo.toUpperCase()} – Norma N-455`, alignment: 'center', fontSize: 9, margin: [0, 2, 0, 2] });
@@ -708,7 +726,7 @@ function anexoRelatorio(c) {
   }
 }
 function docPlano() {
-  const g = GRUPOS[GR()] || GRUPOS.I, b = bensSel(), as = associados(), c = [];
+  const g = GRUPOS[GR()] || GRUPOS.I, b = bensDoc(), as = associados(), c = [];
   c.push({ text: 'ANEXO H – PLANO DE USO DO BEM', bold: true, alignment: 'center', fontSize: 12 });
   c.push({ text: `PESSOA JURÍDICA DE DIREITO PRIVADO SEM FINS LUCRATIVOS – ${g.rotulo.toUpperCase()}`, bold: true, alignment: 'center', margin: [0, 2, 0, 6] });
   c.push(barra('1 – IDENTIFICAÇÃO DA REQUERENTE'));
@@ -856,7 +874,7 @@ const ETAPAS_PUB = [
     <h2>O que o órgão ou entidade está pedindo?</h2><p class="sub">Entidades públicas (Grupo IV) podem pedir qualquer bem adquirido para doação. Marque o(s) bem(ns) e informe a quantidade e para que será usado.</p>
     ${TAB.map(([n]) => n).concat(['__outro']).map((n, i, arr) => { const v = S.bens[n] || {}; return `${cabCat(n, i, arr)}
       <div class="bem"><div class="bh"><label class="opt ${v.on ? 'sel' : ''}" style="flex:1"><input type="checkbox" data-bem="${esc(n)}" ${v.on ? 'checked' : ''}>${n === '__outro' ? 'Outro bem' : esc(n)}</label></div>
-      ${v.on ? `<div class="row" style="margin-top:6px">${n === '__outro' ? `<div><label class="f">Qual bem?</label><input type="text" data-k="outroBem" value="${esc(S.outroBem)}"></div>` : ''}<div style="max-width:140px"><label class="f">Quantidade</label><input type="number" min="1" data-bq="${esc(n)}" value="${esc(v.qtd || '1')}"></div><div style="grid-column:span 2"><label class="f">Para que será usado?</label><input type="text" data-bf="${esc(n)}" value="${esc(v.fin || '')}" placeholder="Ex.: preparo do solo para os agricultores familiares do município"></div></div>` : ''}</div>`; }).join('')}
+      ${v.on ? `<div class="row" style="margin-top:6px">${n === '__outro' ? `<div><label class="f">Qual bem?</label><input type="text" data-k="outroBem" value="${esc(S.outroBem)}"></div>` : ''}${n === BEM_IMP ? '' : `<div style="max-width:170px"><label class="f">${n === BEM_TRI ? 'Quantidade de tratores' : 'Quantidade'}</label><input type="number" min="1" data-bq="${esc(n)}" value="${esc(v.qtd || '1')}"></div>`}<div style="grid-column:span 2"><label class="f">Para que será usado?</label><input type="text" data-bf="${esc(n)}" value="${esc(v.fin || '')}" placeholder="Ex.: preparo do solo para os agricultores familiares do município"></div></div>` : ''}${v.on && (n === BEM_TRI || n === BEM_IMP) ? quadroImpl(n) : ''}</div>`; }).join('')}
     ${temCompactador() ? '<div class="msg warn" style="margin-top:10px">Para caminhão compactador, o formulário vai pedir também o Plano Simplificado de Gestão de Resíduos Sólidos (etapa Resíduos).</div>' : ''}
     <h3>Quem será beneficiado</h3>
     <div class="row"><div>${txt('familias', 'Nº de famílias beneficiadas', { type: 'number' })}</div><div>${txt('pessoas', 'Nº de pessoas beneficiadas', { type: 'number' })}</div></div>
@@ -926,6 +944,7 @@ function pendenciasPub() {
   if (!S.razao) p.push('Nome do órgão ou entidade'); if (!cnpjOk(S.cnpj)) p.push('CNPJ válido'); if (!S.cidade) p.push('Município');
   if (!S.rNome) p.push('Nome da autoridade'); if (!cpfOk(S.rCpf)) p.push('CPF válido da autoridade');
   if (!bensSel().length) p.push('Marcar pelo menos um bem (etapa Pedido)');
+  if (temImpl() && !implSel().length) p.push('Marcar quais implementos agrícolas estão sendo pedidos (etapa Pedido)');
   if (!S.justificativa) p.push('Justificativa (etapa Pedido)');
   if (!S.gEnd) p.push('Local de guarda do bem (etapa Guarda)');
   if (['Serão capacitados', 'Precisam de capacitação'].includes(S.capac) && !S.capacPrev) p.push('Informar a perspectiva de capacitação dos operadores (etapa Plano de uso)');
@@ -935,7 +954,7 @@ function pendenciasPub() {
   return p;
 }
 function revisaoPub() {
-  const p = pendenciasPub(), b = bensSel();
+  const p = pendenciasPub(), b = bensDoc();
   return `<h2>Revisão e geração dos documentos</h2><p class="sub">Confira o resumo, leia as declarações e gere os PDFs para assinatura.</p>
   <dl class="sum">
     <dt>Órgão ou entidade</dt><dd>${esc(S.razao) || '—'} · CNPJ ${esc(S.cnpj) || '—'} · Grupo IV</dd>
@@ -958,7 +977,7 @@ function revisaoPub() {
 }
 
 function docPlanoPub() {
-  const b = bensSel(), c = [];
+  const b = bensDoc(), c = [];
   c.push({ text: 'ANEXO G – PLANO DE USO DO BEM', bold: true, alignment: 'center', fontSize: 12 });
   c.push({ text: 'PESSOAS JURÍDICAS DE DIREITO PÚBLICO', bold: true, alignment: 'center', margin: [0, 2, 0, 6] });
   c.push(barra('1 – IDENTIFICAÇÃO DA REQUERENTE'));
@@ -1041,7 +1060,7 @@ function docResiduos() {
 }
 
 function docRequerimentoPub() {
-  const b = bensSel();
+  const b = bensDoc();
   const c = [];
   c.push({ text: 'REQUERIMENTO DE DOAÇÃO DE BEM DE ATIVIDADE PROGRAMÁTICA – CODEVASF', bold: true, alignment: 'center', fontSize: 11.5 });
   c.push({ text: 'Pessoa jurídica de direito público – Norma N-455', alignment: 'center', fontSize: 9, margin: [0, 2, 0, 2] });
@@ -1095,8 +1114,6 @@ const QDEF = {
   trator: {
     titulo: 'Mecanização agrícola (trator, implementos, ensiladeira)', resp: 'preferencialmente o Secretário de Agricultura',
     itens: [
-      { k: 'qtImplPede', l: 'Quais implementos estão sendo pedidos?', t: 'checks', o: ['Grade aradora', 'Carreta agrícola', 'Batedeira de cereais', 'Arado', 'Plantadeira', 'Roçadeira', 'Sulcador', 'Outro'], bem: [B.tri, B.imp] },
-      { k: 'qtImplPedeOutro', l: 'Outro implemento pedido', t: 'text', se: ['qtImplPede', 'Outro'] },
       { k: 'qtConsorcio', l: 'O pedido é feito por consórcio público?', t: 'radio', o: SN, pub: true },
       { k: 'qtConsorcioMun', l: 'Municípios consorciados que serão atendidos', t: 'text', se: ['qtConsorcio', 'Sim'] },
       { k: 'qtTem', l: p => p ? 'O município (ou consórcio) já possui tratores?' : 'A entidade já possui tratores?', t: 'radio', o: SN },
