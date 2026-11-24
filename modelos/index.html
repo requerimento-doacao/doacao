@@ -64,7 +64,7 @@
     <div class="seg">🔒 <b>Página segura de apoio ao preenchimento.</b> Os modelos são arquivos Word para baixar, preencher e assinar no seu computador; nenhuma informação é enviada ou armazenada por esta página. O pedido só é formalizado quando a entidade protocola os documentos assinados no <a href="https://www.gov.br/codevasf/pt-br/servicos/protocolo-digital" target="_blank" rel="noopener">Protocolo Digital da Codevasf</a>.</div></footer>
 </div>
 <script>
-const VERSAO = 'v2.17 (nov/2026)';
+const VERSAO = 'v2.20 (nov/2026)';
 const PROTOCOLO = 'https://www.gov.br/codevasf/pt-br/servicos/protocolo-digital';
 const item = (arq, titulo, desc, cond, destaque) => `<div class="item${destaque ? ' destaque' : ''}"><div class="tx"><div class="tt">${titulo}${cond ? ` <span class="cond">(${cond})</span>` : ''}</div>${desc ? `<div class="ds">${desc}</div>` : ''}</div><a class="dl" href="${arq}" download>⬇ Baixar</a></div>`;
 const QUEST = [
@@ -100,7 +100,7 @@ const TELAS = {
     <h3>3. Questionário técnico do bem <span class="cond">(baixe só o do bem pedido)</span></h3>
     <div class="grid">${QUEST.map(([s, n, d]) => `<a href="publica/3_Questionarios_Tecnicos/Questionario_Tecnico_${s}.docx" download>⬇ ${n}${d ? `<span>${d}</span>` : ''}</a>`).join('')}</div>
     <h3>4. Se for o caso</h3>
-    ${item('publica/4_Anexo_Relatorio_Uso_e_Fotos.docx', 'Anexo – Relatório de uso e fotos', 'Uso dos bens já recebidos, onde estão e fotos.', 'somente se já recebeu bens da Codevasf')}
+    ${item('publica/4_Anexo_Relatorio_Uso_e_Fotos.docx', 'Anexo – Relatório de uso e fotos', 'Relação dos bens recebidos, uso e fotos georreferenciadas (mín. 1 por bem).', 'somente se recebeu bens em doação nos últimos 4 anos (Codevasf ou outro órgão)')}
     ${item('publica/5_Plano_Simplificado_Gestao_Residuos_Solidos.docx', 'Plano Simplificado de Gestão de Resíduos Sólidos', 'Diagnóstico simples da coleta e do destino do lixo.', 'somente para caminhão compactador')}
     ${comoPreencher}
     <div class="msg">Prefere não usar o Word? O <a href="../index.html#publica">formulário on-line</a> faz as mesmas perguntas e gera os documentos em PDF prontos para assinar.</div>`,
@@ -112,7 +112,7 @@ const TELAS = {
     <h3>2. Modelos para preencher e assinar</h3>
     ${item(`privada/grupo-${grupo}/1_Requerimento_Doacao_Privada_Grupo_${grupo}.docx`, `Requerimento de doação – Grupo ${grupo}`, 'Ofício, declarações (inclusive Anexo K) e lista de documentos em um só arquivo.')}
     ${item(`privada/grupo-${grupo}/2_Plano_de_Uso_Anexo_H_Privada_Grupo_${grupo}.docx`, `Plano de Uso do Bem – Anexo H – Grupo ${grupo}`, 'Arquivo próprio, assinado. Inclui a relação de associados (nome e CPF).')}
-    ${item(`privada/grupo-${grupo}/3_Anexo_Relatorio_Uso_e_Fotos.docx`, 'Anexo – Relatório de uso e fotos', 'Uso dos bens já recebidos, onde estão e fotos.', 'somente se já recebeu bens da Codevasf')}
+    ${item(`privada/grupo-${grupo}/3_Anexo_Relatorio_Uso_e_Fotos.docx`, 'Anexo – Relatório de uso e fotos', 'Relação dos bens recebidos, uso e fotos georreferenciadas (mín. 1 por bem).', 'somente se recebeu bens em doação nos últimos 4 anos (Codevasf ou outro órgão)')}
     ${comoPreencher}
     <div class="msg">Depois do protocolo, a Codevasf fará visita técnica à entidade. Prefere não usar o Word? O <a href="../index.html#privada">formulário on-line</a> gera os documentos em PDF prontos para assinar.</div>`; },
   inicio: () => `<h2>Modelos para pedido de doação</h2><p class="sub">Escolha acima o tipo de entidade para ver os modelos: <b>Entidade pública</b>, <b>Entidade privada sem fins lucrativos</b> (Grupos I, II e III) ou <b>Após a aprovação</b> (autorização de retirada do bem).</p>

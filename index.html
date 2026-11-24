@@ -165,7 +165,7 @@ function GR() {
 const bensDoGrupo = G => ({ livre: TAB.filter(([, e]) => e[G] === 'E').map(([n]) => n), cond: TAB.filter(([, e]) => e[G] === 'C').map(([n]) => n) });
 const ENQ_BENS = Object.fromEntries(['I', 'II', 'III'].map(G => { const b = bensDoGrupo(G); return [G, b.livre.join('; ') + '.' + (b.cond.length ? ' Com análise especial da Comissão de Doação: ' + b.cond.join('; ') + '.' : '')]; }));
 const SUPERINTENDENTE = 'Fred Queiroga Pinto';
-const VERSAO = 'v2.17 (nov/2026)';
+const VERSAO = 'v2.20 (nov/2026)';
 const MODELOS = location.protocol === 'file:' ? 'https://requerimento-doacao.github.io/doacao/modelos/index.html' : 'modelos/index.html';
 
 // ---------------------------------------------------------------- estado
@@ -174,13 +174,13 @@ const VAZIO = () => ({
   banco: '', agencia: '', conta: '',
   rNome: '', rCpf: '', rCargo: 'Presidente(a)', rTel: '', rEmail: '',
   diretoria: [{ nome: '', cpf: '', funcao: '' }], mandato: 'Não', mandatoDesc: '',
-  bens: {}, outroBem: '', familias: '', pessoas: '', comunidades: '', area: [], distancia: '', vias: '', justificativa: '',
+  bens: {}, outroBem: '', familias: '', pessoas: '', comunidades: '', area: [], usoRural: '', usoUrbana: '', distancia: '', vias: '', justificativa: '',
   mulheres: '', famAssoc: '', jovens: '', tamProp: '', estrutura: '', metragem: '',
   atividades: [], ativOutra: '', volume: '', periodicidade: '', sedePropria: '', sedeEnd: '', reunioes: '', arrecadacao: [], possuiMesma: '', possuiDesc: '',
   selecao: '', parcerias: [], parcOutra: '', custeio: [], custeioOutro: '', capac: '', capacDemandas: '',
   gNome: '', gCpf: '', gTel: '', gEmail: '', gEnd: '', gCoord: '',
   assocModo: '', assoc: [{ nome: '', cpf: '' }], nAssocAnexo: '',
-  recebeu: '', recebidos: [{ desc: '', fab: '', rec: '', local: '' }], usoTxt: '', benefTxt: '', manutTxt: '',
+  recebeu: '', recebidos: [{ desc: '', origem: '', orgao: '', fab: '', rec: '', placa: '', local: '' }], usoComs: '', usoNCom: '', usoFam: '', usoPes: '', usoTxt: '', benefTxt: '', manutTxt: '',
   docs: [], aceite: false,
 });
 let TIPO = location.hash === '#publica' ? 'pub' : location.hash === '#privada' ? 'priv' : '';
@@ -244,6 +244,30 @@ const bensDoc = () => bensSel().flatMap(b => {
   const im = implSel().map(x => ({ nome: x.nome + ' (implemento agrícola)', qtd: x.qtd, fin: b.fin }));
   return b.nome === BEM_TRI ? [{ nome: 'Trator agrícola', qtd: b.qtd, fin: b.fin }, ...im] : (im.length ? im : [b]);
 });
+const MAX_FOTOS = 10;
+const NOVO_REC = () => ({ desc: '', origem: '', orgao: '', fab: '', rec: '', placa: '', local: '' });
+const recList = () => S.recebidos.filter(r => r.desc);
+const recResumo = () => { const l = recList(), c = l.filter(r => r.origem === 'Codevasf').length; return { n: l.length, c, o: l.length - c }; };
+const fotosFaltando = () => recList().filter(r => !FOTOS.some(f => f.bem === r.desc)).map(r => r.desc);
+const USO_K = a => a === 'Rural' ? 'usoRural' : 'usoUrbana';
+const usoAreaHTML = () => S.area.length ? `<div class="msg warn" style="margin-top:8px">Para cada área marcada, informe o tipo de uso do bem nessa área. Essa informação vai para a <b>Justificativa</b>.</div>${S.area.map(a => txt(USO_K(a), `Tipo de uso na área ${a.toLowerCase()}`, { ph: a === 'Rural' ? 'Ex.: preparo do solo e transporte da produção das comunidades rurais' : 'Ex.: limpeza de terrenos e apoio a obras nos bairros' })).join('')}` : '';
+const justifTxt = () => [S.justificativa, ...S.area.map(a => `Uso na área ${a.toLowerCase()}: ${S[USO_K(a)] || '___'}`)].filter(Boolean).join('\n');
+function pendComuns(p) {
+  bensSel().filter(b => !b.fin).forEach(b => p.push(`Informar a finalidade (para que será usado): ${b.nome} (etapa Pedido)`));
+  S.area.forEach(a => { if (!S[USO_K(a)]) p.push(`Informar o tipo de uso na área ${a.toLowerCase()} (etapa Pedido)`); });
+  if (S.possuiMesma === 'Sim' && !S.possuiDesc) p.push('Informar quais bens da mesma natureza já possui (etapa Plano de uso)');
+  if (!S.recebeu) p.push('Informar se recebeu bens em doação nos últimos 4 anos (etapa Bens recebidos)');
+  if (S.recebeu === 'Sim') {
+    const r = recList();
+    if (!r.length) p.push('Listar os bens recebidos (etapa Bens recebidos)');
+    if (r.some(x => !x.origem)) p.push('Informar a origem (Codevasf ou outro órgão público) de cada bem recebido');
+    if (r.some(x => x.origem === 'Outro órgão público' && !x.orgao)) p.push('Informar o órgão doador dos bens que não são da Codevasf');
+    if (!S.usoComs) p.push('Relatório de uso: informar as comunidades atendidas');
+    if (!S.usoFam && !S.usoPes) p.push('Relatório de uso: informar o total de beneficiários');
+    const f = fotosFaltando(); if (f.length) p.push(`Incluir pelo menos 1 foto de cada bem recebido (sem foto: ${f.join('; ')})`);
+  }
+}
+const opcoesBemFoto = sel => { const l = recList().map(r => r.desc); if (sel && !l.includes(sel)) l.push(sel); return `<option value="">Bem mostrado na foto…</option>` + l.map(d => `<option ${d === sel ? 'selected' : ''}>${esc(d)}</option>`).join(''); };
 const temImpl = () => bensSel().some(b => b.nome === BEM_TRI || b.nome === BEM_IMP);
 const quadroImpl = n => `<div style="margin-top:8px;padding:10px 12px;background:#fff;border:1px dashed var(--borda);border-radius:8px">
   <label class="f" style="margin-bottom:6px">Quais implementos? Marque e informe a quantidade de cada um</label>
@@ -274,12 +298,12 @@ const ETAPAS_PRIV = [
     ${!PERFIL() ? '<div class="msg warn">Preencha a data de abertura do CNPJ e o número de associados na etapa Perfil para ver os bens que a entidade pode pedir.</div>' : ''}
     ${PERFIL() ? TAB.filter(([n]) => melhor(n)).map(([n]) => [n, melhor(n)]).concat([['__outro', { g: PERFIL(), cond: false }]]).map(([n, m], i, arr) => { const v = S.bens[n] || {}; return `${cabCat(n, i, arr.map(x => x[0]))}
       <div class="bem"><div class="bh"><label class="opt ${v.on ? 'sel' : ''}" style="flex:1"><input type="checkbox" data-bem="${esc(n)}" ${v.on ? 'checked' : ''}>${n === '__outro' ? 'Outro bem' : esc(n)} ${m.cond ? '<small>(análise especial da Comissão)</small>' : ''}</label></div>
-      ${v.on ? `<div class="row" style="margin-top:6px">${n === '__outro' ? `<div><label class="f">Qual bem?</label><input type="text" data-k="outroBem" value="${esc(S.outroBem)}"></div>` : ''}${n === BEM_IMP ? '' : `<div style="max-width:170px"><label class="f">${n === BEM_TRI ? 'Quantidade de tratores' : 'Quantidade'}</label><input type="number" min="1" data-bq="${esc(n)}" value="${esc(v.qtd || '1')}"></div>`}<div style="grid-column:span 2"><label class="f">Para que será usado?</label><input type="text" data-bf="${esc(n)}" value="${esc(v.fin || '')}" placeholder="Ex.: preparo do solo para plantio de milho e feijão"></div></div>` : ''}${v.on && (n === BEM_TRI || n === BEM_IMP) ? quadroImpl(n) : ''}</div>`; }).join('') : ''}
+      ${v.on ? `<div class="row" style="margin-top:6px">${n === '__outro' ? `<div><label class="f">Qual bem?</label><input type="text" data-k="outroBem" value="${esc(S.outroBem)}"></div>` : ''}${n === BEM_IMP ? '' : `<div style="max-width:170px"><label class="f">${n === BEM_TRI ? 'Quantidade de tratores' : 'Quantidade'}</label><input type="number" min="1" data-bq="${esc(n)}" value="${esc(v.qtd || '1')}"></div>`}<div style="grid-column:span 2"><label class="f">Para que será usado? <span class="hint">(finalidade – obrigatório)</span></label><input type="text" data-bf="${esc(n)}" value="${esc(v.fin || '')}" placeholder="Ex.: preparo do solo para plantio de milho e feijão"></div></div>` : ''}${v.on && (n === BEM_TRI || n === BEM_IMP) ? quadroImpl(n) : ''}</div>`; }).join('') : ''}
     ${bensSel().length ? `<div class="msg ok" style="margin-top:12px"><b>Para este pedido, a entidade será analisada como ${GRUPOS[GR()].rotulo}</b>${GR() !== PERFIL() ? ` (o perfil permite até o ${GRUPOS[PERFIL()].rotulo}, mas os bens escolhidos só exigem o ${GRUPOS[GR()].rotulo})` : ''}. As próximas etapas e os documentos seguem as exigências desse grupo.</div>` : ''}
     <h3>Quem será beneficiado</h3>
     <div class="row"><div>${txt('familias', 'Nº de famílias beneficiadas', { type: 'number' })}</div><div>${txt('pessoas', 'Nº de pessoas beneficiadas', { type: 'number' })}</div></div>
     ${txt('comunidades', 'Comunidades / localidades atendidas', { ph: 'Ex.: Sítio Barra, Sítio Lagoa Seca e Assentamento Novo Horizonte' })}
-    ${checks('area', 'Área de atendimento', ['Rural', 'Urbana'])}
+    ${checks('area', 'Área de atendimento', ['Rural', 'Urbana'])}${usoAreaHTML()}
     <div class="row"><div>${txt('distancia', 'Distância até a sede do município (km)', { type: 'number' })}</div><div>${radios('vias', 'Condição das estradas de acesso', ['Boa', 'Regular', 'Ruim'])}</div></div>
     ${area('justificativa', 'Justificativa: por que a entidade precisa do bem?', { hint: '(3 a 5 linhas)', ph: 'Ex.: Os associados hoje alugam trator por hora e muitos deixam de plantar por falta de recursos. Com o trator, a associação poderá preparar a terra de todas as famílias no início das chuvas, ampliando a área plantada...' })}` },
   { t: 'Entidade', f: () => `
@@ -317,7 +341,7 @@ const ETAPAS_PRIV = [
     ${radios('periodicidade', 'Periodicidade de produção', ['Mensal', 'Semestral', 'Anual'])}
     <h3>Bens que já possui</h3>
     ${radios('possuiMesma', 'A entidade já possui bem da mesma natureza do que está pedindo?', ['Não', 'Sim'])}
-    ${S.possuiMesma === 'Sim' ? area('possuiDesc', 'Quais, quantos e ano de fabricação. Se possui 2 ou mais, justifique o novo pedido.') : ''}
+    ${S.possuiMesma === 'Sim' ? area('possuiDesc', 'Quais, quantos e ano de fabricação. Se possui 2 ou mais, justifique o novo pedido.') + '<div class="msg warn">Na <b>Justificativa</b> (etapa Pedido), explique por que, já tendo esses bens, ainda precisa de mais. Se algum deles foi recebido em doação nos últimos 4 anos (da Codevasf ou de outro órgão público), ele também deve ser listado na etapa <b>Bens recebidos</b>. Bens comprados com recursos próprios não entram nessa lista.</div>' : ''}
     <h3>Uso, parcerias e manutenção</h3>
     ${radios('selecao', 'Como os beneficiários serão atendidos?', ['Por ordem de demanda', 'Por cadastro / lista dos associados', 'Por edital ou seleção'])}
     ${checks('parcerias', 'Parcerias e apoios', ['Prefeitura', 'Empaer / assistência técnica', 'Senar', 'Sebrae', 'Sindicato rural', 'Nenhuma'])}
@@ -350,25 +374,32 @@ const ETAPAS_PRIV = [
       <div class="msg ${ARQ_ASSOC && !ARQ_ASSOC.erro ? 'ok' : (ARQ_ASSOC ? 'err' : 'warn')}">${!ARQ_ASSOC ? 'Nenhum arquivo escolhido.' : ARQ_ASSOC.erro ? esc(ARQ_ASSOC.erro) : `PDF lido: ${ARQ_ASSOC.paginas} página(s) serão anexadas ao Plano de Uso.`} </div>
       <p class="hint">No protótipo, o arquivo não fica salvo no rascunho: se a página for recarregada, escolha-o de novo.</p>` : ''}` },
   { t: 'Bens recebidos', f: () => `
-    <h2>A entidade já recebeu bens da Codevasf?</h2><p class="sub">Se sim, inclua um relatório curto de uso e fotos. Eles serão anexados ao Plano de Uso.</p>
+    <h2>A entidade recebeu bens em doação nos últimos 4 anos?</h2><p class="sub">Vale para bens doados pela Codevasf <b>ou por qualquer outro órgão público</b>. Não conte bens comprados com recursos próprios.</p>
     ${radios('recebeu', '', ['Não', 'Sim'])}
     ${S.recebeu === 'Sim' ? `
-      <h3>Bens recebidos</h3><p class="hint">Para cada bem, informe também onde ele está hoje.</p>
-      ${S.recebidos.map((r, i) => `<div class="bem" style="margin-top:8px"><div class="dir" style="grid-template-columns:2fr 1fr 1fr auto;margin-top:0"><input type="text" placeholder="Descrição do bem" data-rec="${i}" data-f="desc" value="${esc(r.desc)}"><input type="text" placeholder="Ano de fabricação" data-rec="${i}" data-f="fab" value="${esc(r.fab)}"><input type="text" placeholder="Ano de recebimento" data-rec="${i}" data-f="rec" value="${esc(r.rec)}"><button class="mini" data-delrec="${i}">✕</button></div><input type="text" style="margin-top:6px" placeholder="Onde o bem está hoje (endereço, comunidade ou sítio)" data-rec="${i}" data-f="local" value="${esc(r.local || '')}"></div>`).join('')}
+      <div class="msg ok">Como a resposta é <b>Sim</b>, a relação dos bens, o relatório de uso e as fotos ficam todos no <b>Anexo – Relatório de Uso e Registro Fotográfico</b>, que sai junto com o Plano de Uso. No item Benefícios recebidos do Plano de Uso aparecem só as quantidades.</div>
+      <h3>Bens recebidos nos últimos 4 anos</h3><p class="hint">Liste todos os bens recebidos em doação, da Codevasf ou de outro órgão público.</p>
+      ${S.recebidos.map((r, i) => `<div class="bem" style="margin-top:8px"><div class="dir" style="grid-template-columns:2fr 1.2fr 1.4fr auto;margin-top:0"><input type="text" placeholder="Descrição do bem" data-rec="${i}" data-f="desc" value="${esc(r.desc)}"><select data-rec="${i}" data-f="origem"><option value="">Origem…</option>${['Codevasf', 'Outro órgão público'].map(o => `<option ${r.origem === o ? 'selected' : ''}>${o}</option>`).join('')}</select><input type="text" placeholder="Órgão doador (se não for a Codevasf)" data-rec="${i}" data-f="orgao" value="${esc(r.orgao || '')}"><button class="mini" data-delrec="${i}">✕</button></div>
+        <div class="dir" style="grid-template-columns:1fr 1fr 1.4fr;margin-top:6px"><input type="text" placeholder="Ano de fabricação" data-rec="${i}" data-f="fab" value="${esc(r.fab)}"><input type="text" placeholder="Ano de recebimento" data-rec="${i}" data-f="rec" value="${esc(r.rec)}"><input type="text" placeholder="Placa ou chassi" data-rec="${i}" data-f="placa" value="${esc(r.placa || '')}"></div>
+        <input type="text" style="margin-top:6px" placeholder="Onde o bem está hoje (endereço, comunidade ou sítio)" data-rec="${i}" data-f="local" value="${esc(r.local || '')}"></div>`).join('')}
       <button class="mini" id="addrec" style="margin-top:8px">+ Adicionar bem</button>
       <h3>Relatório de uso</h3>
-      ${area('usoTxt', 'Como o(s) bem(ns) vem(êm) sendo usado(s)?', { hint: '(atividades, comunidades atendidas, período de uso; se algum estiver parado, informe o motivo)' })}
-      ${area('benefTxt', 'Benefícios alcançados', { ph: 'Ex.: 120 hectares preparados por ano; 85 famílias atendidas' })}
+      ${txt('usoComs', 'Comunidades atendidas pelos bens', { ph: 'Ex.: Sítio Barra, Sítio Lagoa Seca e Assentamento Novo Horizonte' })}
+      <div class="row"><div>${txt('usoNCom', 'Nº de comunidades atendidas', { type: 'number' })}</div><div>${txt('usoFam', 'Total de famílias beneficiadas', { type: 'number' })}</div><div>${txt('usoPes', 'Total de pessoas beneficiadas', { type: 'number' })}</div></div>
+      ${area('usoTxt', 'Como o(s) bem(ns) vem(êm) sendo usado(s)?', { hint: '(atividades e período de uso; se algum estiver parado, informe o motivo)' })}
+      ${area('benefTxt', 'Benefícios alcançados', { ph: 'Ex.: 120 hectares preparados por ano' })}
       ${area('manutTxt', 'Manutenção e custeio', { ph: 'Ex.: manutenção na oficina do município a cada 250 horas, paga com a taxa de uso' })}
-      <h3>Fotos (até 6)</h3>
-      <p class="hint">Fotos tiradas direto pelo celular trazem data e localização, que são preenchidas automaticamente. Mostre o bem inteiro, a identificação da Codevasf e o bem em uso.</p>
-      ${FOTOS.length < 6 ? `<label class="drop" id="drop">📷 Clique para escolher as fotos ou arraste-as para cá<input type="file" id="fileIn" accept="image/*" multiple style="display:none"></label>` : ''}
+      <h3>Fotos (mínimo 1 por bem, até ${MAX_FOTOS})</h3>
+      <div class="msg warn">As fotos devem mostrar o <b>adesivo da Codevasf, a placa ou o chassi</b> do bem e precisam ser <b>georreferenciadas</b> (com data e coordenadas). Sugestão: use um aplicativo de câmera que grava data, hora e localização na própria foto, como o <b>Timestamp Camera</b> ou o <b>GPS Map Camera</b> (Android e iPhone).</div>
+      <p class="hint">Fotos tiradas direto pelo celular costumam trazer data e localização, que são preenchidas automaticamente. Para cada foto, escolha qual bem ela mostra.</p>
+      ${FOTOS.length < MAX_FOTOS ? `<label class="drop" id="drop">📷 Clique para escolher as fotos ou arraste-as para cá<input type="file" id="fileIn" accept="image/*" multiple style="display:none"></label>` : ''}
       <div class="photos">${FOTOS.map((p, i) => `<div class="ph"><img src="${p.data}" alt="Foto ${i + 1}"><div class="acts"><button class="mini" data-rot="${i}">↻ Girar</button><button class="mini" data-delph="${i}">✕ Remover</button></div>
-        <input type="text" placeholder="Bem mostrado na foto" data-ph="${i}" data-f="bem" value="${esc(p.bem)}">
+        <select data-ph="${i}" data-f="bem">${opcoesBemFoto(p.bem)}</select>
         <input type="text" placeholder="Data (dd/mm/aaaa)" data-ph="${i}" data-f="dataFoto" value="${esc(p.dataFoto)}">
-        <input type="text" placeholder="Coordenadas (se tiver)" data-ph="${i}" data-f="coord" value="${esc(p.coord)}">
+        <input type="text" placeholder="Coordenadas" data-ph="${i}" data-f="coord" value="${esc(p.coord)}">
         <input type="text" placeholder="Local onde o bem está (endereço, comunidade ou sítio)" data-ph="${i}" data-f="local" value="${esc(p.local || '')}">
-        ${p.auto ? '<div class="msg ok" style="margin-top:4px">Data/local lidos da foto</div>' : '<div class="msg warn" style="margin-top:4px">Foto sem data/coordenadas: preencha a data e o local à mão</div>'}</div>`).join('')}</div>
+        ${p.auto ? '<div class="msg ok" style="margin-top:4px">Data/local lidos da foto</div>' : '<div class="msg warn" style="margin-top:4px">Foto sem data/coordenadas: preencha à mão. Prefira fotos georreferenciadas.</div>'}</div>`).join('')}</div>
+      ${recList().length && fotosFaltando().length ? `<div class="msg warn" style="margin-top:8px">Bem(ns) ainda sem foto: ${fotosFaltando().map(esc).join('; ')}</div>` : ''}
       <p class="hint" style="margin-top:8px">No protótipo, as fotos não ficam salvas no rascunho: se a página for recarregada, será preciso adicioná-las de novo.</p>` : ''}` },
   { t: 'Revisão', f: () => revisao() },
 ];
@@ -376,7 +407,7 @@ const ETAPAS_PRIV = [
 function docsLista() {
   const d = ['Plano de Uso do Bem – Anexo H (arquivo próprio, assinado)', 'Comprovante de inscrição no CNPJ', 'Estatuto social registrado/autenticado em cartório', 'Ata de eleição e posse da diretoria atual', 'RG/CNH, CPF e comprovante de residência do representante (até 90 dias)', 'Certidões: FGTS, Receita Federal/PGFN e Débitos Trabalhistas'];
   if (GR() === 'III') { d.push('Extrato bancário do fundo de reserva ≥ 2% do valor do bem', 'Comprovante de sede/escritório em funcionamento'); if (temBem('retroescavadeira')) d.push('Balanço patrimonial/social com fundo de custeio (retroescavadeira)'); if (temBem('caminhão compactador')) d.push('Plano de Gestão de Resíduos Sólidos (compactador)'); }
-  if (S.recebeu === 'Sim') d.push('Relatório de uso e fotos de bens já recebidos (anexo ao Plano de Uso)');
+  if (S.recebeu === 'Sim') d.push('Relatório de uso e fotos dos bens recebidos nos últimos 4 anos (anexo ao Plano de Uso)');
   return d;
 }
 function declaracoes() {
@@ -412,7 +443,7 @@ function pendencias() {
   if (S.assocModo === 'Anexar PDF' && g && S.nAssocAnexo && +S.nAssocAnexo < g.assoc) p.push(`Relação com no mínimo ${g.assoc} associados (informado: ${S.nAssocAnexo})`);
   if (!S.gEnd) p.push('Local de guarda do bem (etapa Guarda)');
   if (['Serão capacitados', 'Precisam de capacitação'].includes(S.capac) && !S.capacPrev) p.push('Informar a perspectiva de capacitação dos operadores (etapa Plano de uso)');
-  if (!S.recebeu) p.push('Informar se já recebeu bens da Codevasf');
+  pendComuns(p);
   if (!S.aceite) p.push('Marcar a concordância com as declarações');
   return p;
 }
@@ -425,7 +456,7 @@ function revisao() {
     <dt>Bens pedidos</dt><dd>${b.length ? b.map(x => `${esc(x.qtd)} × ${esc(x.nome)}`).join('; ') : '—'}</dd>
     <dt>Exigências aplicadas</dt><dd>${grupoMotivo()}</dd>
     <dt>Associados</dt><dd>${S.assocModo === 'Anexar PDF' ? `${esc(S.nAssocAnexo) || '—'} associados – relação em PDF${ARQ_ASSOC ? ' (' + esc(ARQ_ASSOC.name) + ')' : ''}, anexada ao final do Plano de Uso` : associados().length + ' na lista'}</dd>
-    <dt>Bens já recebidos</dt><dd>${S.recebeu === 'Sim' ? `Sim – relatório e ${FOTOS.length} foto(s) serão anexados ao Plano de Uso` : (S.recebeu || '—')}</dd>
+    <dt>Bens já recebidos</dt><dd>${S.recebeu === 'Sim' ? `Sim – ${recResumo().n} bem(ns) (Codevasf: ${recResumo().c}; outros órgãos: ${recResumo().o}); relação, relatório e ${FOTOS.length} foto(s) no anexo ao Plano de Uso` : (S.recebeu || '—')}</dd>
   </dl>
   ${blocoDocsTela()}
   <h3>Declarações que constarão do requerimento</h3>
@@ -460,7 +491,7 @@ function docsGerados() {
   const g = [`Plano de Uso do Bem – ${TIPO === 'pub' ? 'Anexo G' : 'Anexo H'}`];
   if (TIPO === 'priv' && S.assocModo === 'Digitar') g.push('Relação de associados (dentro do Plano de Uso)');
   if (TIPO === 'priv' && S.assocModo === 'Anexar PDF') g.push('Relação de associados (PDF anexado ao final do Plano de Uso)');
-  if (S.recebeu === 'Sim') g.push('Relatório de uso e fotos de bens recebidos (anexo ao Plano de Uso)');
+  if (S.recebeu === 'Sim') g.push('Relatório de uso e fotos dos bens recebidos nos últimos 4 anos (anexo ao Plano de Uso)');
   if (blocosQ().length) g.push('Questionário técnico do bem (anexo ao Plano de Uso)');
   if (TIPO === 'pub' && temCompactador()) g.push('Plano Simplificado de Gestão de Resíduos Sólidos');
   return g;
@@ -543,14 +574,16 @@ card.addEventListener('input', e => {
   if (t.dataset.bf) { S.bens[t.dataset.bf].fin = t.value; salvar(); return; }
   if (t.dataset.ph !== undefined) { FOTOS[+t.dataset.ph][t.dataset.f] = t.value; return; }
 });
+card.addEventListener('focusin', e => { const t = e.target; if (t.tagName === 'SELECT' && t.dataset.ph !== undefined) t.innerHTML = opcoesBemFoto(FOTOS[+t.dataset.ph].bem); });
 card.addEventListener('change', e => {
   const t = e.target;
   if (t.id === 'arqPre') { if (t.files[0]) abrirPreenchimento(t.files[0]); t.value = ''; return; }
   if (t.type === 'radio' && t.dataset.k) { S[t.dataset.k] = t.value; salvar(); render(); return; }
-  if (t.dataset.arr) { const a = S[t.dataset.arr] || (S[t.dataset.arr] = []); const i = a.indexOf(t.value); if (t.checked && i < 0) a.push(t.value); if (!t.checked && i >= 0) a.splice(i, 1); salvar(); if (typeof QDEP !== 'undefined' && QDEP.has(t.dataset.arr)) { render(); return; } t.closest('.opt').classList.toggle('sel', t.checked); return; }
+  if (t.dataset.arr) { const a = S[t.dataset.arr] || (S[t.dataset.arr] = []); const i = a.indexOf(t.value); if (t.checked && i < 0) a.push(t.value); if (!t.checked && i >= 0) a.splice(i, 1); salvar(); if (t.dataset.arr === 'area' || (typeof QDEP !== 'undefined' && QDEP.has(t.dataset.arr))) { render(); return; } t.closest('.opt').classList.toggle('sel', t.checked); return; }
   if (t.dataset.bool) { S[t.dataset.bool] = t.checked; salvar(); render(); return; }
   if (t.dataset.impl) { S.impl = S.impl || {}; S.impl[t.dataset.impl] = Object.assign(S.impl[t.dataset.impl] || { qtd: '1' }, { on: t.checked }); salvar(); render(); return; }
   if (t.dataset.bem) { const n = t.dataset.bem; S.bens[n] = Object.assign(S.bens[n] || { qtd: '1', fin: '' }, { on: t.checked }); salvar(); render(); return; }
+  if (t.tagName === 'SELECT' && t.dataset.ph !== undefined) { FOTOS[+t.dataset.ph].bem = t.value; render(); return; }
   if (t.id === 'fileIn') { addFotos(t.files); return; }
   if (t.id === 'fileAs') { lerAnexoAssoc(t.files[0]); return; }
   if (t.dataset.as !== undefined && t.dataset.f === 'cpf') { const i = +t.dataset.as; S.assoc[i].cpf = fmtCpf(t.value); t.value = S.assoc[i].cpf; salvar(); return; }
@@ -567,8 +600,8 @@ card.addEventListener('click', e => {
   else if (t.dataset.delas) { S.assoc.splice(+t.dataset.delas, 1); if (!S.assoc.length) S.assoc.push({ nome: '', cpf: '' }); salvar(); render(); }
   else if (t.id === 'adddir') { S.diretoria.push({ nome: '', cpf: '', funcao: '' }); salvar(); render(); }
   else if (t.dataset.deldir) { S.diretoria.splice(+t.dataset.deldir, 1); if (!S.diretoria.length) S.diretoria.push({ nome: '', cpf: '', funcao: '' }); salvar(); render(); }
-  else if (t.id === 'addrec') { S.recebidos.push({ desc: '', fab: '', rec: '', local: '' }); salvar(); render(); }
-  else if (t.dataset.delrec) { S.recebidos.splice(+t.dataset.delrec, 1); if (!S.recebidos.length) S.recebidos.push({ desc: '', fab: '', rec: '', local: '' }); salvar(); render(); }
+  else if (t.id === 'addrec') { S.recebidos.push(NOVO_REC()); salvar(); render(); }
+  else if (t.dataset.delrec) { S.recebidos.splice(+t.dataset.delrec, 1); if (!S.recebidos.length) S.recebidos.push(NOVO_REC()); salvar(); render(); }
   else if (t.dataset.rot) { girar(+t.dataset.rot); }
   else if (t.dataset.delph) { FOTOS.splice(+t.dataset.delph, 1); render(); }
   else if (t.id === 'guardarPre') guardarPreenchimento();
@@ -640,7 +673,7 @@ async function reduzir(src, rot = 0, max = 1400) {
 }
 async function addFotos(files) {
   for (const f of Array.from(files || [])) {
-    if (FOTOS.length >= 6) break; if (!f.type.startsWith('image/')) continue;
+    if (FOTOS.length >= MAX_FOTOS) break; if (!f.type.startsWith('image/')) continue;
     const buf = await f.arrayBuffer(); const ex = lerExif(buf);
     const url = URL.createObjectURL(f);
     try { const data = await reduzir(url); FOTOS.push({ data, bem: '', dataFoto: ex.data || '', coord: ex.coord || '', auto: !!(ex.data || ex.coord) }); }
@@ -694,9 +727,9 @@ function docRequerimento() {
     [{ text: 'Área de atendimento', bold: true }, multi(['Rural', 'Urbana'], S.area)],
     [{ text: 'Data de abertura do CNPJ', bold: true }, v(dataBR(S.abertura))],
     [{ text: 'Nº de associados', bold: true }, v(S.nAssoc || String(associados().length || ''))],
-    [{ text: 'Já recebeu bens da Codevasf?', bold: true }, multi(['Não', 'Sim – relatório de uso e fotos anexos ao Plano de Uso'], S.recebeu === 'Sim' ? 'Sim – relatório de uso e fotos anexos ao Plano de Uso' : S.recebeu)],
+    [{ text: 'Recebeu bens em doação nos últimos 4 anos?', bold: true }, multi(['Não', 'Sim – relatório de uso e fotos anexos ao Plano de Uso'], S.recebeu === 'Sim' ? 'Sim – relatório de uso e fotos anexos ao Plano de Uso' : S.recebeu)],
   ], [150, '*']));
-  c.push({ text: [{ text: 'Justificativa: ', bold: true }, v(S.justificativa)], alignment: 'justify', margin: [0, 8, 0, 6] });
+  c.push({ text: [{ text: 'Justificativa: ', bold: true }, v(justifTxt())], alignment: 'justify', margin: [0, 8, 0, 6] });
   c.push({ text: 'Para instruir o pedido, apresentamos as declarações exigidas pela Norma N-455 (Parte II) e os documentos relacionados na Parte III, entre eles o Plano de Uso do Bem (Anexo H), em arquivo próprio e assinado.', alignment: 'justify' });
   c.push(barraEsc('PARTE II – DECLARAÇÕES'));
   c.push({ text: 'Na qualidade de representante legal da requerente, DECLARO, sob as penas da lei, para fins de prova junto ao Ministério da Integração e do Desenvolvimento Regional (MIDR) / Codevasf, que:', margin: [0, 0, 0, 4] });
@@ -713,11 +746,14 @@ function anexoRelatorio(c) {
   {
     c.push({ text: 'ANEXO – RELATÓRIO DE USO E REGISTRO FOTOGRÁFICO DE BENS RECEBIDOS', bold: true, alignment: 'center', fontSize: 11, pageBreak: 'before' });
     c.push({ text: `${v(S.razao)} – CNPJ ${v(S.cnpj)}`, alignment: 'center', margin: [0, 2, 0, 6] });
-    c.push(barra('1 – BENS JÁ RECEBIDOS DA CODEVASF'));
-    c.push(grade([[{ text: 'Nº', bold: true, fillColor: CLARO }, { text: 'Descrição do bem', bold: true, fillColor: CLARO }, { text: 'Ano de recebimento', bold: true, fillColor: CLARO }, { text: 'Onde o bem está', bold: true, fillColor: CLARO }], ...S.recebidos.filter(r => r.desc).map((r, i) => [String(i + 1), r.desc, v(r.rec), v(r.local)])].concat(S.recebidos.some(r => r.desc) ? [] : [['—', '', '', '']]), [22, '*', 75, 170]));
+    c.push(barra('1 – BENS RECEBIDOS EM DOAÇÃO NOS ÚLTIMOS 4 ANOS'));
+    const H = t => ({ text: t, bold: true, fillColor: CLARO, fontSize: 8 });
+    c.push(grade([[H('Nº'), H('Descrição do bem'), H('Origem'), H('Ano fab.'), H('Ano rec.'), H('Placa ou chassi'), H('Onde o bem está')], ...recList().map((r, i) => [String(i + 1), r.desc, r.origem === 'Outro órgão público' ? `Outro órgão: ${v(r.orgao)}` : v(r.origem), v(r.fab), v(r.rec), v(r.placa), v(r.local)].map(x => ({ text: x, fontSize: 8 })))].concat(recList().length ? [] : [['—', '', '', '', '', '', '']]), [16, '*', 75, 34, 34, 70, 105]));
     c.push(barra('2 – RELATÓRIO DE USO'));
-    c.push(grade([[{ stack: [{ text: 'Como o(s) bem(ns) vem(êm) sendo usado(s)', bold: true }, { text: v(S.usoTxt), margin: [0, 2, 0, 0] }] }], [{ stack: [{ text: 'Benefícios alcançados', bold: true }, { text: v(S.benefTxt), margin: [0, 2, 0, 0] }] }], [{ stack: [{ text: 'Manutenção e custeio', bold: true }, { text: v(S.manutTxt), margin: [0, 2, 0, 0] }] }]], ['*']));
+    const L = (t, x) => [{ stack: [{ text: t, bold: true }, { text: x, margin: [0, 2, 0, 0] }] }];
+    c.push(grade([L('Comunidades atendidas', v(S.usoComs)), L('Nº de comunidades e total de beneficiários', `${v(S.usoNCom, '___')} comunidade(s); ${v(S.usoFam, '___')} famílias / ${v(S.usoPes, '___')} pessoas`), L('Como o(s) bem(ns) vem(êm) sendo usado(s)', v(S.usoTxt)), L('Benefícios alcançados', v(S.benefTxt)), L('Manutenção e custeio', v(S.manutTxt))], ['*']));
     c.push(barra('3 – REGISTRO FOTOGRÁFICO'));
+    c.push({ text: 'Fotos georreferenciadas (data e coordenadas), mostrando o adesivo da Codevasf, a placa ou o chassi do bem – mínimo de 1 foto por bem.', italics: true, fontSize: 8.5, margin: [0, 0, 0, 4] });
     if (!FOTOS.length) c.push({ text: 'Nenhuma foto incluída.', italics: true });
     for (let i = 0; i < FOTOS.length; i += 2) {
       const cel = j => FOTOS[j] ? { stack: [{ image: FOTOS[j].data, fit: [245, 180], alignment: 'center' }, { text: [{ text: `Foto ${j + 1}`, bold: true }, ` – Bem: ${v(FOTOS[j].bem)}`], fontSize: 8, margin: [0, 4, 0, 0] }, { text: `Data: ${v(FOTOS[j].dataFoto)}   Coordenadas: ${v(FOTOS[j].coord)}`, fontSize: 8 }, { text: `Local: ${v(FOTOS[j].local)}`, fontSize: 8 }] } : { text: '' };
@@ -751,14 +787,14 @@ function docPlano() {
   c.push(barra('7 – OBJETIVO GERAL'));
   c.push({ text: b.length ? b.map(x => `${x.qtd} ${x.nome}${x.fin ? ' – ' + x.fin : ''}`).join('; ') + '.' : '—' });
   c.push(barra('8 – PÚBLICO-ALVO'));
-  c.push({ text: `Comunidades atendidas: ${v(S.comunidades)}. População beneficiada: ${v(S.familias, '___')} famílias / ${v(S.pessoas, '___')} pessoas. Área: ${v(S.area.join(' e '))}. Distância até a sede do município: ${v(S.distancia, '___')} km; condição das estradas: ${v(S.vias)}.` });
+  c.push({ text: `Comunidades atendidas: ${v(S.comunidades)}. População beneficiada: ${v(S.familias, '___')} famílias / ${v(S.pessoas, '___')} pessoas. Área: ${v(S.area.join(' e '))}${S.area.length ? ' (tipo de uso em cada área na Justificativa)' : ''}. Distância até a sede do município: ${v(S.distancia, '___')} km; condição das estradas: ${v(S.vias)}.` });
   c.push(barra('9 – JUSTIFICATIVA'));
-  c.push({ text: v(S.justificativa), alignment: 'justify' });
+  c.push({ text: v(justifTxt()), alignment: 'justify' });
   c.push(barra('10 – CADASTRAMENTO E CRITÉRIOS INTERNOS DE SELEÇÃO DOS BENEFICIÁRIOS'));
   c.push(multi(['Por ordem de demanda', 'Por cadastro / lista dos associados', 'Por edital ou seleção'], S.selecao));
   c.push(barra('11 – BENEFÍCIOS RECEBIDOS'));
-  c.push({ text: `Recebeu doação da Administração Pública de bem(ns) nos últimos 4 anos?   ${S.recebeu === 'Sim' ? '[X] Sim   [  ] Não' : S.recebeu === 'Não' ? '[  ] Sim   [X] Não' : '[  ] Sim   [  ] Não'}` });
-  if (S.recebeu === 'Sim') { c.push(grade([[{ text: 'Descrição do bem', bold: true, fillColor: CLARO }, { text: 'Ano de fabricação', bold: true, fillColor: CLARO }, { text: 'Ano de recebimento', bold: true, fillColor: CLARO }], ...S.recebidos.filter(r => r.desc).map(r => [r.desc, v(r.fab), v(r.rec)])].concat(S.recebidos.some(r => r.desc) ? [] : [['—', '', '']]), ['*', 90, 90])); c.push({ text: 'Relatório de uso e registro fotográfico no anexo ao final deste Plano de Uso.', italics: true, fontSize: 8.5, margin: [0, 3, 0, 0] }); }
+  c.push({ text: `Recebeu doação da Administração Pública de bem(ns) nos últimos 4 anos (da Codevasf ou de outro órgão público)?   ${S.recebeu === 'Sim' ? '[X] Sim   [  ] Não' : S.recebeu === 'Não' ? '[  ] Sim   [X] Não' : '[  ] Sim   [  ] Não'}` });
+  if (S.recebeu === 'Sim') { const r = recResumo(); c.push({ text: `Quantidade de bens recebidos: ${r.n} (da Codevasf: ${r.c}; de outros órgãos públicos: ${r.o}).`, margin: [0, 3, 0, 0] }); c.push({ text: 'A relação dos bens, o relatório de uso e o registro fotográfico constam do Anexo – Relatório de Uso e Registro Fotográfico de Bens Recebidos, ao final deste Plano de Uso.', italics: true, fontSize: 8.5, margin: [0, 3, 0, 0] }); }
   c.push(barra('12 – PARCERIAS'));
   c.push({ text: v([...S.parcerias, S.parcOutra].filter(Boolean).join(', ')) });
   c.push(barra('13 – ARRECADAÇÃO E CUSTEIO'));
@@ -874,12 +910,12 @@ const ETAPAS_PUB = [
     <h2>O que o órgão ou entidade está pedindo?</h2><p class="sub">Entidades públicas (Grupo IV) podem pedir qualquer bem adquirido para doação. Marque o(s) bem(ns) e informe a quantidade e para que será usado.</p>
     ${TAB.map(([n]) => n).concat(['__outro']).map((n, i, arr) => { const v = S.bens[n] || {}; return `${cabCat(n, i, arr)}
       <div class="bem"><div class="bh"><label class="opt ${v.on ? 'sel' : ''}" style="flex:1"><input type="checkbox" data-bem="${esc(n)}" ${v.on ? 'checked' : ''}>${n === '__outro' ? 'Outro bem' : esc(n)}</label></div>
-      ${v.on ? `<div class="row" style="margin-top:6px">${n === '__outro' ? `<div><label class="f">Qual bem?</label><input type="text" data-k="outroBem" value="${esc(S.outroBem)}"></div>` : ''}${n === BEM_IMP ? '' : `<div style="max-width:170px"><label class="f">${n === BEM_TRI ? 'Quantidade de tratores' : 'Quantidade'}</label><input type="number" min="1" data-bq="${esc(n)}" value="${esc(v.qtd || '1')}"></div>`}<div style="grid-column:span 2"><label class="f">Para que será usado?</label><input type="text" data-bf="${esc(n)}" value="${esc(v.fin || '')}" placeholder="Ex.: preparo do solo para os agricultores familiares do município"></div></div>` : ''}${v.on && (n === BEM_TRI || n === BEM_IMP) ? quadroImpl(n) : ''}</div>`; }).join('')}
+      ${v.on ? `<div class="row" style="margin-top:6px">${n === '__outro' ? `<div><label class="f">Qual bem?</label><input type="text" data-k="outroBem" value="${esc(S.outroBem)}"></div>` : ''}${n === BEM_IMP ? '' : `<div style="max-width:170px"><label class="f">${n === BEM_TRI ? 'Quantidade de tratores' : 'Quantidade'}</label><input type="number" min="1" data-bq="${esc(n)}" value="${esc(v.qtd || '1')}"></div>`}<div style="grid-column:span 2"><label class="f">Para que será usado? <span class="hint">(finalidade – obrigatório)</span></label><input type="text" data-bf="${esc(n)}" value="${esc(v.fin || '')}" placeholder="Ex.: preparo do solo para os agricultores familiares do município"></div></div>` : ''}${v.on && (n === BEM_TRI || n === BEM_IMP) ? quadroImpl(n) : ''}</div>`; }).join('')}
     ${temCompactador() ? '<div class="msg warn" style="margin-top:10px">Para caminhão compactador, o formulário vai pedir também o Plano Simplificado de Gestão de Resíduos Sólidos (etapa Resíduos).</div>' : ''}
     <h3>Quem será beneficiado</h3>
     <div class="row"><div>${txt('familias', 'Nº de famílias beneficiadas', { type: 'number' })}</div><div>${txt('pessoas', 'Nº de pessoas beneficiadas', { type: 'number' })}</div></div>
     ${txt('comunidades', 'Comunidades / localidades atendidas', { ph: 'Ex.: Distrito de Lagoa Seca, Sítio Barra e Assentamento Novo Horizonte' })}
-    ${checks('area', 'Área de atendimento', ['Rural', 'Urbana'])}
+    ${checks('area', 'Área de atendimento', ['Rural', 'Urbana'])}${usoAreaHTML()}
     <div class="row"><div>${txt('distancia', 'Distância média das comunidades até a sede do município (km)', { type: 'number' })}</div><div>${radios('vias', 'Condição das estradas de acesso', ['Boa', 'Regular', 'Ruim'])}</div></div>
     ${area('justificativa', 'Justificativa: por que o município precisa do bem?', { hint: '(3 a 5 linhas)', ph: 'Ex.: O município tem 600 agricultores familiares e só um trator, que não dá conta do preparo do solo no início das chuvas...' })}` },
   { t: 'Órgão', f: () => `
@@ -897,7 +933,7 @@ const ETAPAS_PUB = [
     ${checks('atividades', 'Principais atividades que o bem vai atender', ATIV_PUB)}
     ${txt('ativOutra', 'Outra atividade (se houver)')}
     ${radios('possuiMesma', 'O município já possui bem da mesma natureza do que está pedindo?', ['Não', 'Sim'])}
-    ${S.possuiMesma === 'Sim' ? area('possuiDesc', 'Quais, quantos e ano de fabricação. Se possui 2 ou mais, justifique o novo pedido.') : ''}
+    ${S.possuiMesma === 'Sim' ? area('possuiDesc', 'Quais, quantos e ano de fabricação. Se possui 2 ou mais, justifique o novo pedido.') + '<div class="msg warn">Na <b>Justificativa</b> (etapa Pedido), explique por que, já tendo esses bens, ainda precisa de mais. Se algum deles foi recebido em doação nos últimos 4 anos (da Codevasf ou de outro órgão público), ele também deve ser listado na etapa <b>Bens recebidos</b>. Bens comprados com recursos próprios não entram nessa lista.</div>' : ''}
     ${radios('selecao', 'Como os beneficiários serão atendidos?', ['Por ordem de demanda', 'Por cadastro da secretaria', 'Por edital ou seleção'])}
     ${checks('parcerias', 'Parcerias e apoios', ['Governo do Estado', 'Empaer / assistência técnica', 'Senar', 'Sebrae', 'Associações e sindicatos rurais', 'Consórcio intermunicipal', 'Nenhuma'])}
     ${txt('parcOutra', 'Outra parceria (se houver)')}
@@ -907,7 +943,7 @@ const ETAPAS_PUB = [
     ${['Serão capacitados', 'Precisam de capacitação'].includes(S.capac) ? `<div class="msg warn">Ter operador capacitado é condição para o recebimento do bem. Informe como e quando a capacitação vai ocorrer.</div>${txt('capacPrev', 'Perspectiva de capacitação: como e quando ocorrerá', { ph: 'Ex.: curso do Senar previsto para março/2027; operador do município fará o treinamento na entrega' })}` : ''}
     ${txt('capacDemandas', 'Demandas de capacitação (se houver)')}` },
   { t: 'Guarda', f: () => etapaPriv('Guarda')() },
-  { t: 'Bens recebidos', f: () => etapaPriv('Bens recebidos')().replace('A entidade já recebeu', 'O órgão ou entidade já recebeu') },
+  { t: 'Bens recebidos', f: () => etapaPriv('Bens recebidos')().replace('A entidade recebeu', 'O órgão ou entidade recebeu') },
   { t: 'Resíduos', f: () => !temCompactador() ? `<h2>Plano de Gestão de Resíduos Sólidos</h2><div class="msg ok">Esta etapa só se aplica a pedidos de caminhão compactador. Pode avançar.</div>` : `
     <h2>Plano Simplificado de Gestão de Resíduos Sólidos</h2><p class="sub">Exigido para doação de caminhão compactador. Respostas simples sobre a coleta de lixo no município.</p>
     <h3>Diagnóstico simplificado (situação atual)</h3>
@@ -932,7 +968,7 @@ const ETAPAS_PUB = [
 function docsListaPub() {
   const d = ['Plano de Uso do Bem – Anexo G (arquivo próprio, assinado)', 'Comprovante de inscrição no CNPJ', 'Termo de posse, diploma ou ato de investidura da autoridade', 'RG/CNH, CPF e comprovante de residência da autoridade (até 90 dias)'];
   if (temCompactador()) d.push('Plano Simplificado de Gestão de Resíduos Sólidos (caminhão compactador)');
-  if (S.recebeu === 'Sim') d.push('Relatório de uso e fotos de bens já recebidos (anexo ao Plano de Uso)');
+  if (S.recebeu === 'Sim') d.push('Relatório de uso e fotos dos bens recebidos nos últimos 4 anos (anexo ao Plano de Uso)');
   return d;
 }
 function declaracoesPub() {
@@ -948,7 +984,7 @@ function pendenciasPub() {
   if (!S.justificativa) p.push('Justificativa (etapa Pedido)');
   if (!S.gEnd) p.push('Local de guarda do bem (etapa Guarda)');
   if (['Serão capacitados', 'Precisam de capacitação'].includes(S.capac) && !S.capacPrev) p.push('Informar a perspectiva de capacitação dos operadores (etapa Plano de uso)');
-  if (!S.recebeu) p.push('Informar se já recebeu bens da Codevasf');
+  pendComuns(p);
   if (temCompactador()) { if (!S.rsDest) p.push('Resíduos: onde o lixo é descartado hoje'); if (!S.rsDestNovo) p.push('Resíduos: para onde o caminhão levará o lixo'); if (!S.rsPaga) p.push('Resíduos: quem pagará a operação do caminhão'); }
   if (!S.aceite) p.push('Marcar a concordância com as declarações');
   return p;
@@ -960,7 +996,7 @@ function revisaoPub() {
     <dt>Órgão ou entidade</dt><dd>${esc(S.razao) || '—'} · CNPJ ${esc(S.cnpj) || '—'} · Grupo IV</dd>
     <dt>Autoridade</dt><dd>${esc(S.rNome) || '—'} (${esc(S.rCargo)})</dd>
     <dt>Bens pedidos</dt><dd>${b.length ? b.map(x => `${esc(x.qtd)} × ${esc(x.nome)}`).join('; ') : '—'}</dd>
-    <dt>Bens já recebidos</dt><dd>${S.recebeu === 'Sim' ? `Sim – relatório e ${FOTOS.length} foto(s) serão anexados ao Plano de Uso` : (S.recebeu || '—')}</dd>
+    <dt>Bens já recebidos</dt><dd>${S.recebeu === 'Sim' ? `Sim – ${recResumo().n} bem(ns) (Codevasf: ${recResumo().c}; outros órgãos: ${recResumo().o}); relação, relatório e ${FOTOS.length} foto(s) no anexo ao Plano de Uso` : (S.recebeu || '—')}</dd>
   </dl>
   ${blocoDocsTela()}
   <h3>Declarações que constarão do requerimento</h3>
@@ -992,14 +1028,14 @@ function docPlanoPub() {
     `Bens da mesma natureza que já possui: ${S.possuiMesma === 'Sim' ? v(S.possuiDesc) : v(S.possuiMesma)}.`,
   ] });
   c.push(barra('5 – PÚBLICO-ALVO'));
-  c.push({ text: `Comunidades atendidas: ${v(S.comunidades)}. População beneficiada: ${v(S.familias, '___')} famílias / ${v(S.pessoas, '___')} pessoas. Área: ${v(S.area.join(' e '))}. Distância média até a sede do município: ${v(S.distancia, '___')} km; condição das estradas: ${v(S.vias)}.` });
+  c.push({ text: `Comunidades atendidas: ${v(S.comunidades)}. População beneficiada: ${v(S.familias, '___')} famílias / ${v(S.pessoas, '___')} pessoas. Área: ${v(S.area.join(' e '))}${S.area.length ? ' (tipo de uso em cada área na Justificativa)' : ''}. Distância média até a sede do município: ${v(S.distancia, '___')} km; condição das estradas: ${v(S.vias)}.` });
   c.push(barra('6 – JUSTIFICATIVA'));
-  c.push({ text: v(S.justificativa), alignment: 'justify' });
+  c.push({ text: v(justifTxt()), alignment: 'justify' });
   c.push(barra('7 – CADASTRAMENTO E CRITÉRIOS INTERNOS DE SELEÇÃO DOS BENEFICIÁRIOS'));
   c.push(multi(['Por ordem de demanda', 'Por cadastro da secretaria', 'Por edital ou seleção'], S.selecao));
   c.push(barra('8 – BENEFÍCIOS RECEBIDOS'));
-  c.push({ text: `Recebeu doação da Administração Pública de bem(ns) nos últimos 4 anos?   ${S.recebeu === 'Sim' ? '[X] Sim   [  ] Não' : S.recebeu === 'Não' ? '[  ] Sim   [X] Não' : '[  ] Sim   [  ] Não'}` });
-  if (S.recebeu === 'Sim') { c.push(grade([[{ text: 'Descrição do bem', bold: true, fillColor: CLARO }, { text: 'Ano de fabricação', bold: true, fillColor: CLARO }, { text: 'Ano de recebimento', bold: true, fillColor: CLARO }], ...S.recebidos.filter(r => r.desc).map(r => [r.desc, v(r.fab), v(r.rec)])].concat(S.recebidos.some(r => r.desc) ? [] : [['—', '', '']]), ['*', 90, 90])); c.push({ text: 'Relatório de uso e registro fotográfico no anexo ao final deste Plano de Uso.', italics: true, fontSize: 8.5, margin: [0, 3, 0, 0] }); }
+  c.push({ text: `Recebeu doação da Administração Pública de bem(ns) nos últimos 4 anos (da Codevasf ou de outro órgão público)?   ${S.recebeu === 'Sim' ? '[X] Sim   [  ] Não' : S.recebeu === 'Não' ? '[  ] Sim   [X] Não' : '[  ] Sim   [  ] Não'}` });
+  if (S.recebeu === 'Sim') { const r = recResumo(); c.push({ text: `Quantidade de bens recebidos: ${r.n} (da Codevasf: ${r.c}; de outros órgãos públicos: ${r.o}).`, margin: [0, 3, 0, 0] }); c.push({ text: 'A relação dos bens, o relatório de uso e o registro fotográfico constam do Anexo – Relatório de Uso e Registro Fotográfico de Bens Recebidos, ao final deste Plano de Uso.', italics: true, fontSize: 8.5, margin: [0, 3, 0, 0] }); }
   c.push(barra('9 – PARCERIAS'));
   c.push({ text: v([...S.parcerias, S.parcOutra].filter(Boolean).join(', ')) });
   c.push(barra('10 – ARRECADAÇÃO E CUSTEIO'));
@@ -1080,9 +1116,9 @@ function docRequerimentoPub() {
     [{ text: 'Público beneficiado', bold: true }, `${v(S.familias, '___')} famílias / ${v(S.pessoas, '___')} pessoas`],
     [{ text: 'Comunidades / localidades', bold: true }, v(S.comunidades)],
     [{ text: 'Área de atendimento', bold: true }, multi(['Rural', 'Urbana'], S.area)],
-    [{ text: 'Já recebeu bens da Codevasf?', bold: true }, multi(['Não', 'Sim – relatório de uso e fotos anexos ao Plano de Uso'], S.recebeu === 'Sim' ? 'Sim – relatório de uso e fotos anexos ao Plano de Uso' : S.recebeu)],
+    [{ text: 'Recebeu bens em doação nos últimos 4 anos?', bold: true }, multi(['Não', 'Sim – relatório de uso e fotos anexos ao Plano de Uso'], S.recebeu === 'Sim' ? 'Sim – relatório de uso e fotos anexos ao Plano de Uso' : S.recebeu)],
   ], [150, '*']));
-  c.push({ text: [{ text: 'Justificativa: ', bold: true }, v(S.justificativa)], alignment: 'justify', margin: [0, 8, 0, 6] });
+  c.push({ text: [{ text: 'Justificativa: ', bold: true }, v(justifTxt())], alignment: 'justify', margin: [0, 8, 0, 6] });
   c.push({ text: 'Para instruir o pedido, apresentamos as declarações exigidas pela Norma N-455 (Parte II) e os documentos relacionados na Parte III, entre eles o Plano de Uso do Bem (Anexo G), em arquivo próprio e assinado.', alignment: 'justify' });
   c.push(barraEsc('PARTE II – DECLARAÇÕES'));
   c.push({ text: 'Na qualidade de representante legal da requerente, DECLARO, sob as penas da lei, para fins de prova junto ao Ministério da Integração e do Desenvolvimento Regional (MIDR) / Codevasf, que:', margin: [0, 0, 0, 4] });
