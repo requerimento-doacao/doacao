@@ -165,7 +165,7 @@ function GR() {
 const bensDoGrupo = G => ({ livre: TAB.filter(([, e]) => e[G] === 'E').map(([n]) => n), cond: TAB.filter(([, e]) => e[G] === 'C').map(([n]) => n) });
 const ENQ_BENS = Object.fromEntries(['I', 'II', 'III'].map(G => { const b = bensDoGrupo(G); return [G, b.livre.join('; ') + '.' + (b.cond.length ? ' Com análise especial da Comissão de Doação: ' + b.cond.join('; ') + '.' : '')]; }));
 const SUPERINTENDENTE = 'Fred Queiroga Pinto';
-const VERSAO = 'v2.20 (nov/2026)';
+const VERSAO = 'v2.22 (nov/2026)';
 const MODELOS = location.protocol === 'file:' ? 'https://requerimento-doacao.github.io/doacao/modelos/index.html' : 'modelos/index.html';
 
 // ---------------------------------------------------------------- estado
@@ -248,7 +248,8 @@ const MAX_FOTOS = 10;
 const NOVO_REC = () => ({ desc: '', origem: '', orgao: '', fab: '', rec: '', placa: '', local: '' });
 const recList = () => S.recebidos.filter(r => r.desc);
 const recResumo = () => { const l = recList(), c = l.filter(r => r.origem === 'Codevasf').length; return { n: l.length, c, o: l.length - c }; };
-const fotosFaltando = () => recList().filter(r => !FOTOS.some(f => f.bem === r.desc)).map(r => r.desc);
+const recCod = () => recList().filter(r => r.origem === 'Codevasf');
+const fotosFaltando = () => recCod().filter(r => !FOTOS.some(f => f.bem === r.desc)).map(r => r.desc);
 const USO_K = a => a === 'Rural' ? 'usoRural' : 'usoUrbana';
 const usoAreaHTML = () => S.area.length ? `<div class="msg warn" style="margin-top:8px">Para cada área marcada, informe o tipo de uso do bem nessa área. Essa informação vai para a <b>Justificativa</b>.</div>${S.area.map(a => txt(USO_K(a), `Tipo de uso na área ${a.toLowerCase()}`, { ph: a === 'Rural' ? 'Ex.: preparo do solo e transporte da produção das comunidades rurais' : 'Ex.: limpeza de terrenos e apoio a obras nos bairros' })).join('')}` : '';
 const justifTxt = () => [S.justificativa, ...S.area.map(a => `Uso na área ${a.toLowerCase()}: ${S[USO_K(a)] || '___'}`)].filter(Boolean).join('\n');
@@ -264,10 +265,10 @@ function pendComuns(p) {
     if (r.some(x => x.origem === 'Outro órgão público' && !x.orgao)) p.push('Informar o órgão doador dos bens que não são da Codevasf');
     if (!S.usoComs) p.push('Relatório de uso: informar as comunidades atendidas');
     if (!S.usoFam && !S.usoPes) p.push('Relatório de uso: informar o total de beneficiários');
-    const f = fotosFaltando(); if (f.length) p.push(`Incluir pelo menos 1 foto de cada bem recebido (sem foto: ${f.join('; ')})`);
+    const f = fotosFaltando(); if (f.length) p.push(`Incluir pelo menos 1 foto de cada bem recebido da Codevasf (sem foto: ${f.join('; ')})`);
   }
 }
-const opcoesBemFoto = sel => { const l = recList().map(r => r.desc); if (sel && !l.includes(sel)) l.push(sel); return `<option value="">Bem mostrado na foto…</option>` + l.map(d => `<option ${d === sel ? 'selected' : ''}>${esc(d)}</option>`).join(''); };
+const opcoesBemFoto = sel => { const l = recCod().map(r => r.desc); if (sel && !l.includes(sel)) l.push(sel); return `<option value="">Bem mostrado na foto…</option>` + l.map(d => `<option ${d === sel ? 'selected' : ''}>${esc(d)}</option>`).join(''); };
 const temImpl = () => bensSel().some(b => b.nome === BEM_TRI || b.nome === BEM_IMP);
 const quadroImpl = n => `<div style="margin-top:8px;padding:10px 12px;background:#fff;border:1px dashed var(--borda);border-radius:8px">
   <label class="f" style="margin-bottom:6px">Quais implementos? Marque e informe a quantidade de cada um</label>
@@ -341,7 +342,7 @@ const ETAPAS_PRIV = [
     ${radios('periodicidade', 'Periodicidade de produção', ['Mensal', 'Semestral', 'Anual'])}
     <h3>Bens que já possui</h3>
     ${radios('possuiMesma', 'A entidade já possui bem da mesma natureza do que está pedindo?', ['Não', 'Sim'])}
-    ${S.possuiMesma === 'Sim' ? area('possuiDesc', 'Quais, quantos e ano de fabricação. Se possui 2 ou mais, justifique o novo pedido.') + '<div class="msg warn">Na <b>Justificativa</b> (etapa Pedido), explique por que, já tendo esses bens, ainda precisa de mais. Se algum deles foi recebido em doação nos últimos 4 anos (da Codevasf ou de outro órgão público), ele também deve ser listado na etapa <b>Bens recebidos</b>. Bens comprados com recursos próprios não entram nessa lista.</div>' : ''}
+    ${S.possuiMesma === 'Sim' ? area('possuiDesc', 'Quais, quantos e ano de fabricação. Se possui 2 ou mais, justifique o novo pedido.') + '<div class="msg warn">Na <b>Justificativa</b> (etapa Pedido), explique por que, já tendo esses bens, ainda precisa de mais. Se algum deles foi recebido em doação nos últimos 4 anos (da Codevasf ou de outro órgão público), ele também deve ser listado na etapa <b>Bens recebidos</b>.</div>' : ''}
     <h3>Uso, parcerias e manutenção</h3>
     ${radios('selecao', 'Como os beneficiários serão atendidos?', ['Por ordem de demanda', 'Por cadastro / lista dos associados', 'Por edital ou seleção'])}
     ${checks('parcerias', 'Parcerias e apoios', ['Prefeitura', 'Empaer / assistência técnica', 'Senar', 'Sebrae', 'Sindicato rural', 'Nenhuma'])}
@@ -374,10 +375,10 @@ const ETAPAS_PRIV = [
       <div class="msg ${ARQ_ASSOC && !ARQ_ASSOC.erro ? 'ok' : (ARQ_ASSOC ? 'err' : 'warn')}">${!ARQ_ASSOC ? 'Nenhum arquivo escolhido.' : ARQ_ASSOC.erro ? esc(ARQ_ASSOC.erro) : `PDF lido: ${ARQ_ASSOC.paginas} página(s) serão anexadas ao Plano de Uso.`} </div>
       <p class="hint">No protótipo, o arquivo não fica salvo no rascunho: se a página for recarregada, escolha-o de novo.</p>` : ''}` },
   { t: 'Bens recebidos', f: () => `
-    <h2>A entidade recebeu bens em doação nos últimos 4 anos?</h2><p class="sub">Vale para bens doados pela Codevasf <b>ou por qualquer outro órgão público</b>. Não conte bens comprados com recursos próprios.</p>
+    <h2>A entidade recebeu bens em doação nos últimos 4 anos?</h2><p class="sub">Vale para bens doados pela Codevasf <b>ou por qualquer outro órgão público</b>.</p>
     ${radios('recebeu', '', ['Não', 'Sim'])}
     ${S.recebeu === 'Sim' ? `
-      <div class="msg ok">Como a resposta é <b>Sim</b>, a relação dos bens, o relatório de uso e as fotos ficam todos no <b>Anexo – Relatório de Uso e Registro Fotográfico</b>, que sai junto com o Plano de Uso. No item Benefícios recebidos do Plano de Uso aparecem só as quantidades.</div>
+      <div class="msg ok">Como a resposta é <b>Sim</b>, a relação dos bens, o relatório de uso e as fotos ficam todos no <b>Anexo – Relatório de Uso e Registro Fotográfico</b>, que sai junto com o Plano de Uso. No item Benefícios recebidos do Plano de Uso aparecem só as quantidades: o total e quantos são da Codevasf e de outros órgãos públicos. As fotos são exigidas somente dos bens da Codevasf.</div>
       <h3>Bens recebidos nos últimos 4 anos</h3><p class="hint">Liste todos os bens recebidos em doação, da Codevasf ou de outro órgão público.</p>
       ${S.recebidos.map((r, i) => `<div class="bem" style="margin-top:8px"><div class="dir" style="grid-template-columns:2fr 1.2fr 1.4fr auto;margin-top:0"><input type="text" placeholder="Descrição do bem" data-rec="${i}" data-f="desc" value="${esc(r.desc)}"><select data-rec="${i}" data-f="origem"><option value="">Origem…</option>${['Codevasf', 'Outro órgão público'].map(o => `<option ${r.origem === o ? 'selected' : ''}>${o}</option>`).join('')}</select><input type="text" placeholder="Órgão doador (se não for a Codevasf)" data-rec="${i}" data-f="orgao" value="${esc(r.orgao || '')}"><button class="mini" data-delrec="${i}">✕</button></div>
         <div class="dir" style="grid-template-columns:1fr 1fr 1.4fr;margin-top:6px"><input type="text" placeholder="Ano de fabricação" data-rec="${i}" data-f="fab" value="${esc(r.fab)}"><input type="text" placeholder="Ano de recebimento" data-rec="${i}" data-f="rec" value="${esc(r.rec)}"><input type="text" placeholder="Placa ou chassi" data-rec="${i}" data-f="placa" value="${esc(r.placa || '')}"></div>
@@ -389,9 +390,9 @@ const ETAPAS_PRIV = [
       ${area('usoTxt', 'Como o(s) bem(ns) vem(êm) sendo usado(s)?', { hint: '(atividades e período de uso; se algum estiver parado, informe o motivo)' })}
       ${area('benefTxt', 'Benefícios alcançados', { ph: 'Ex.: 120 hectares preparados por ano' })}
       ${area('manutTxt', 'Manutenção e custeio', { ph: 'Ex.: manutenção na oficina do município a cada 250 horas, paga com a taxa de uso' })}
-      <h3>Fotos (mínimo 1 por bem, até ${MAX_FOTOS})</h3>
-      <div class="msg warn">As fotos devem mostrar o <b>adesivo da Codevasf, a placa ou o chassi</b> do bem e precisam ser <b>georreferenciadas</b> (com data e coordenadas). Sugestão: use um aplicativo de câmera que grava data, hora e localização na própria foto, como o <b>Timestamp Camera</b> ou o <b>GPS Map Camera</b> (Android e iPhone).</div>
-      <p class="hint">Fotos tiradas direto pelo celular costumam trazer data e localização, que são preenchidas automaticamente. Para cada foto, escolha qual bem ela mostra.</p>
+      <h3>Fotos – exclusivo dos bens da Codevasf (mínimo 1 por bem, até ${MAX_FOTOS})</h3>
+      <div class="msg warn">O registro fotográfico é <b>exclusivo dos bens recebidos da Codevasf</b>; bens de outros órgãos não precisam de foto. As fotos devem mostrar o <b>adesivo da Codevasf, a placa ou o chassi</b> do bem e precisam ser <b>georreferenciadas</b> (com data e coordenadas). Sugestão: use um aplicativo de câmera que grava data, hora e localização na própria foto, como o <b>Timestamp Camera</b> ou o <b>GPS Map Camera</b> (Android e iPhone).</div>
+      <p class="hint">Fotos tiradas direto pelo celular costumam trazer data e localização, que são preenchidas automaticamente. Para cada foto, escolha qual bem da Codevasf ela mostra.</p>
       ${FOTOS.length < MAX_FOTOS ? `<label class="drop" id="drop">📷 Clique para escolher as fotos ou arraste-as para cá<input type="file" id="fileIn" accept="image/*" multiple style="display:none"></label>` : ''}
       <div class="photos">${FOTOS.map((p, i) => `<div class="ph"><img src="${p.data}" alt="Foto ${i + 1}"><div class="acts"><button class="mini" data-rot="${i}">↻ Girar</button><button class="mini" data-delph="${i}">✕ Remover</button></div>
         <select data-ph="${i}" data-f="bem">${opcoesBemFoto(p.bem)}</select>
@@ -399,7 +400,7 @@ const ETAPAS_PRIV = [
         <input type="text" placeholder="Coordenadas" data-ph="${i}" data-f="coord" value="${esc(p.coord)}">
         <input type="text" placeholder="Local onde o bem está (endereço, comunidade ou sítio)" data-ph="${i}" data-f="local" value="${esc(p.local || '')}">
         ${p.auto ? '<div class="msg ok" style="margin-top:4px">Data/local lidos da foto</div>' : '<div class="msg warn" style="margin-top:4px">Foto sem data/coordenadas: preencha à mão. Prefira fotos georreferenciadas.</div>'}</div>`).join('')}</div>
-      ${recList().length && fotosFaltando().length ? `<div class="msg warn" style="margin-top:8px">Bem(ns) ainda sem foto: ${fotosFaltando().map(esc).join('; ')}</div>` : ''}
+      ${fotosFaltando().length ? `<div class="msg warn" style="margin-top:8px">Bem(ns) da Codevasf ainda sem foto: ${fotosFaltando().map(esc).join('; ')}</div>` : ''}
       <p class="hint" style="margin-top:8px">No protótipo, as fotos não ficam salvas no rascunho: se a página for recarregada, será preciso adicioná-las de novo.</p>` : ''}` },
   { t: 'Revisão', f: () => revisao() },
 ];
@@ -752,8 +753,8 @@ function anexoRelatorio(c) {
     c.push(barra('2 – RELATÓRIO DE USO'));
     const L = (t, x) => [{ stack: [{ text: t, bold: true }, { text: x, margin: [0, 2, 0, 0] }] }];
     c.push(grade([L('Comunidades atendidas', v(S.usoComs)), L('Nº de comunidades e total de beneficiários', `${v(S.usoNCom, '___')} comunidade(s); ${v(S.usoFam, '___')} famílias / ${v(S.usoPes, '___')} pessoas`), L('Como o(s) bem(ns) vem(êm) sendo usado(s)', v(S.usoTxt)), L('Benefícios alcançados', v(S.benefTxt)), L('Manutenção e custeio', v(S.manutTxt))], ['*']));
-    c.push(barra('3 – REGISTRO FOTOGRÁFICO'));
-    c.push({ text: 'Fotos georreferenciadas (data e coordenadas), mostrando o adesivo da Codevasf, a placa ou o chassi do bem – mínimo de 1 foto por bem.', italics: true, fontSize: 8.5, margin: [0, 0, 0, 4] });
+    c.push(barra('3 – REGISTRO FOTOGRÁFICO – BENS DA CODEVASF'));
+    c.push({ text: 'Registro exclusivo dos bens recebidos da Codevasf: fotos georreferenciadas (data e coordenadas), mostrando o adesivo da Codevasf, a placa ou o chassi do bem – mínimo de 1 foto por bem.', italics: true, fontSize: 8.5, margin: [0, 0, 0, 4] });
     if (!FOTOS.length) c.push({ text: 'Nenhuma foto incluída.', italics: true });
     for (let i = 0; i < FOTOS.length; i += 2) {
       const cel = j => FOTOS[j] ? { stack: [{ image: FOTOS[j].data, fit: [245, 180], alignment: 'center' }, { text: [{ text: `Foto ${j + 1}`, bold: true }, ` – Bem: ${v(FOTOS[j].bem)}`], fontSize: 8, margin: [0, 4, 0, 0] }, { text: `Data: ${v(FOTOS[j].dataFoto)}   Coordenadas: ${v(FOTOS[j].coord)}`, fontSize: 8 }, { text: `Local: ${v(FOTOS[j].local)}`, fontSize: 8 }] } : { text: '' };
@@ -794,7 +795,7 @@ function docPlano() {
   c.push(multi(['Por ordem de demanda', 'Por cadastro / lista dos associados', 'Por edital ou seleção'], S.selecao));
   c.push(barra('11 – BENEFÍCIOS RECEBIDOS'));
   c.push({ text: `Recebeu doação da Administração Pública de bem(ns) nos últimos 4 anos (da Codevasf ou de outro órgão público)?   ${S.recebeu === 'Sim' ? '[X] Sim   [  ] Não' : S.recebeu === 'Não' ? '[  ] Sim   [X] Não' : '[  ] Sim   [  ] Não'}` });
-  if (S.recebeu === 'Sim') { const r = recResumo(); c.push({ text: `Quantidade de bens recebidos: ${r.n} (da Codevasf: ${r.c}; de outros órgãos públicos: ${r.o}).`, margin: [0, 3, 0, 0] }); c.push({ text: 'A relação dos bens, o relatório de uso e o registro fotográfico constam do Anexo – Relatório de Uso e Registro Fotográfico de Bens Recebidos, ao final deste Plano de Uso.', italics: true, fontSize: 8.5, margin: [0, 3, 0, 0] }); }
+  if (S.recebeu === 'Sim') { const r = recResumo(); c.push({ text: 'Quantidades:', bold: true, margin: [0, 4, 0, 2] }); c.push(grade([[{ text: 'Total de bens recebidos', bold: true }, String(r.n)], ['Quantidade recebida da Codevasf', String(r.c)], ['Quantidade recebida de outros órgãos públicos', String(r.o)]], [230, 50])); c.push({ text: 'A relação dos bens, o relatório de uso e o registro fotográfico constam do Anexo – Relatório de Uso e Registro Fotográfico de Bens Recebidos, ao final deste Plano de Uso.', italics: true, fontSize: 8.5, margin: [0, 3, 0, 0] }); }
   c.push(barra('12 – PARCERIAS'));
   c.push({ text: v([...S.parcerias, S.parcOutra].filter(Boolean).join(', ')) });
   c.push(barra('13 – ARRECADAÇÃO E CUSTEIO'));
@@ -933,7 +934,7 @@ const ETAPAS_PUB = [
     ${checks('atividades', 'Principais atividades que o bem vai atender', ATIV_PUB)}
     ${txt('ativOutra', 'Outra atividade (se houver)')}
     ${radios('possuiMesma', 'O município já possui bem da mesma natureza do que está pedindo?', ['Não', 'Sim'])}
-    ${S.possuiMesma === 'Sim' ? area('possuiDesc', 'Quais, quantos e ano de fabricação. Se possui 2 ou mais, justifique o novo pedido.') + '<div class="msg warn">Na <b>Justificativa</b> (etapa Pedido), explique por que, já tendo esses bens, ainda precisa de mais. Se algum deles foi recebido em doação nos últimos 4 anos (da Codevasf ou de outro órgão público), ele também deve ser listado na etapa <b>Bens recebidos</b>. Bens comprados com recursos próprios não entram nessa lista.</div>' : ''}
+    ${S.possuiMesma === 'Sim' ? area('possuiDesc', 'Quais, quantos e ano de fabricação. Se possui 2 ou mais, justifique o novo pedido.') + '<div class="msg warn">Na <b>Justificativa</b> (etapa Pedido), explique por que, já tendo esses bens, ainda precisa de mais. Se algum deles foi recebido em doação nos últimos 4 anos (da Codevasf ou de outro órgão público), ele também deve ser listado na etapa <b>Bens recebidos</b>.</div>' : ''}
     ${radios('selecao', 'Como os beneficiários serão atendidos?', ['Por ordem de demanda', 'Por cadastro da secretaria', 'Por edital ou seleção'])}
     ${checks('parcerias', 'Parcerias e apoios', ['Governo do Estado', 'Empaer / assistência técnica', 'Senar', 'Sebrae', 'Associações e sindicatos rurais', 'Consórcio intermunicipal', 'Nenhuma'])}
     ${txt('parcOutra', 'Outra parceria (se houver)')}
@@ -1035,7 +1036,7 @@ function docPlanoPub() {
   c.push(multi(['Por ordem de demanda', 'Por cadastro da secretaria', 'Por edital ou seleção'], S.selecao));
   c.push(barra('8 – BENEFÍCIOS RECEBIDOS'));
   c.push({ text: `Recebeu doação da Administração Pública de bem(ns) nos últimos 4 anos (da Codevasf ou de outro órgão público)?   ${S.recebeu === 'Sim' ? '[X] Sim   [  ] Não' : S.recebeu === 'Não' ? '[  ] Sim   [X] Não' : '[  ] Sim   [  ] Não'}` });
-  if (S.recebeu === 'Sim') { const r = recResumo(); c.push({ text: `Quantidade de bens recebidos: ${r.n} (da Codevasf: ${r.c}; de outros órgãos públicos: ${r.o}).`, margin: [0, 3, 0, 0] }); c.push({ text: 'A relação dos bens, o relatório de uso e o registro fotográfico constam do Anexo – Relatório de Uso e Registro Fotográfico de Bens Recebidos, ao final deste Plano de Uso.', italics: true, fontSize: 8.5, margin: [0, 3, 0, 0] }); }
+  if (S.recebeu === 'Sim') { const r = recResumo(); c.push({ text: 'Quantidades:', bold: true, margin: [0, 4, 0, 2] }); c.push(grade([[{ text: 'Total de bens recebidos', bold: true }, String(r.n)], ['Quantidade recebida da Codevasf', String(r.c)], ['Quantidade recebida de outros órgãos públicos', String(r.o)]], [230, 50])); c.push({ text: 'A relação dos bens, o relatório de uso e o registro fotográfico constam do Anexo – Relatório de Uso e Registro Fotográfico de Bens Recebidos, ao final deste Plano de Uso.', italics: true, fontSize: 8.5, margin: [0, 3, 0, 0] }); }
   c.push(barra('9 – PARCERIAS'));
   c.push({ text: v([...S.parcerias, S.parcOutra].filter(Boolean).join(', ')) });
   c.push(barra('10 – ARRECADAÇÃO E CUSTEIO'));
